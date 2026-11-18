@@ -2,6 +2,14 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 const API_URL = "/api/ongs";
 
+function getAuthHeaders(getState) {
+  const token = getState()?.auth?.token;
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+}
+
 export const fetchOngs = createAsyncThunk("ongs/fetchAll", async (_, { rejectWithValue }) => {
   try {
     const res = await fetch(API_URL);
@@ -12,33 +20,19 @@ export const fetchOngs = createAsyncThunk("ongs/fetchAll", async (_, { rejectWit
   }
 });
 
-export const createOng = createAsyncThunk("ongs/create", async (ongData, { rejectWithValue }) => {
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(ongData)
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || "Error al registrar la ONG");
-    }
-    return await res.json();
-  } catch (err) {
-    return rejectWithValue(err.message);
-  }
-});
-
-export const updateOng = createAsyncThunk(
-  "ongs/update",
-  async ({ id, data }, { rejectWithValue }) => {
+export const createOng = createAsyncThunk(
+  "ongs/create",
+  async (ongData, { getState, rejectWithValue }) => {
     try {
-      const res = await fetch(`${API_URL}/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: getAuthHeaders(getState),
+        body: JSON.stringify(ongData)
       });
-      if (!res.ok) throw new Error("Error al actualizar la ONG");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Error al registrar la ONG");
+      }
       return await res.json();
     } catch (err) {
       return rejectWithValue(err.message);
@@ -46,15 +40,44 @@ export const updateOng = createAsyncThunk(
   }
 );
 
-export const deleteOng = createAsyncThunk("ongs/delete", async (id, { rejectWithValue }) => {
-  try {
-    const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Error al eliminar la ONG");
-    return id;
-  } catch (err) {
-    return rejectWithValue(err.message);
+export const updateOng = createAsyncThunk(
+  "ongs/update",
+  async ({ id, data }, { getState, rejectWithValue }) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: getAuthHeaders(getState),
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Error al actualizar la ONG");
+      }
+      return await res.json();
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
   }
-});
+);
+
+export const deleteOng = createAsyncThunk(
+  "ongs/delete",
+  async (id, { getState, rejectWithValue }) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(getState)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Error al eliminar la ONG");
+      }
+      return id;
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
 
 const ongsSlice = createSlice({
   name: "ongs",

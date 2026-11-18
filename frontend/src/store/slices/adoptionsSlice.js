@@ -2,6 +2,14 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 const API_URL = "/api/adoptions";
 
+function getAuthHeaders(getState) {
+  const token = getState()?.auth?.token;
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+}
+
 export const fetchAdoptions = createAsyncThunk(
   "adoptions/fetchAll",
   async (_, { rejectWithValue }) => {
@@ -17,11 +25,11 @@ export const fetchAdoptions = createAsyncThunk(
 
 export const createAdoption = createAsyncThunk(
   "adoptions/create",
-  async (adoptionData, { rejectWithValue }) => {
+  async (adoptionData, { getState, rejectWithValue }) => {
     try {
       const res = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(getState),
         body: JSON.stringify(adoptionData)
       });
       if (!res.ok) {
@@ -37,14 +45,17 @@ export const createAdoption = createAsyncThunk(
 
 export const updateAdoption = createAsyncThunk(
   "adoptions/update",
-  async ({ id, data }, { rejectWithValue }) => {
+  async ({ id, data }, { getState, rejectWithValue }) => {
     try {
       const res = await fetch(`${API_URL}/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(getState),
         body: JSON.stringify(data)
       });
-      if (!res.ok) throw new Error("Error al actualizar el registro de adopción");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Error al actualizar el registro de adopción");
+      }
       return await res.json();
     } catch (err) {
       return rejectWithValue(err.message);
@@ -54,10 +65,16 @@ export const updateAdoption = createAsyncThunk(
 
 export const deleteAdoption = createAsyncThunk(
   "adoptions/delete",
-  async (id, { rejectWithValue }) => {
+  async (id, { getState, rejectWithValue }) => {
     try {
-      const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Error al eliminar el registro de adopción");
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(getState)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Error al eliminar el registro de adopción");
+      }
       return id;
     } catch (err) {
       return rejectWithValue(err.message);

@@ -2,6 +2,14 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 const API_URL = "/api/contacts";
 
+function getAuthHeaders(getState) {
+  const token = getState()?.auth?.token;
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+}
+
 export const fetchContacts = createAsyncThunk(
   "contacts/fetchAll",
   async (_, { rejectWithValue }) => {
@@ -37,14 +45,17 @@ export const createContact = createAsyncThunk(
 
 export const updateContact = createAsyncThunk(
   "contacts/update",
-  async ({ id, data }, { rejectWithValue }) => {
+  async ({ id, data }, { getState, rejectWithValue }) => {
     try {
       const res = await fetch(`${API_URL}/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(getState),
         body: JSON.stringify(data)
       });
-      if (!res.ok) throw new Error("Error al actualizar la consulta");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Error al actualizar la consulta");
+      }
       return await res.json();
     } catch (err) {
       return rejectWithValue(err.message);
@@ -54,10 +65,16 @@ export const updateContact = createAsyncThunk(
 
 export const deleteContact = createAsyncThunk(
   "contacts/delete",
-  async (id, { rejectWithValue }) => {
+  async (id, { getState, rejectWithValue }) => {
     try {
-      const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Error al eliminar la consulta");
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(getState)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Error al eliminar la consulta");
+      }
       return id;
     } catch (err) {
       return rejectWithValue(err.message);

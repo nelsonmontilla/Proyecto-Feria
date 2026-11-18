@@ -18,6 +18,40 @@ app.use(express.json({ limit: "5mb" }));
 // Iniciar conexión a MongoDB Atlas si MONGODB_URI está configurada en .env
 connectMongoAtlas();
 
+// ===========================================================
+// MIDDLEWARE DE PROTECCIÓN DE RUTAS Y ROLES EN EL BACKEND
+// ===========================================================
+function requireRole(allowedRoles = ["admin"]) {
+  return (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        message: "Acceso no autorizado: Debes iniciar sesión para realizar esta acción."
+      });
+    }
+
+    try {
+      const token = authHeader.split(" ")[1];
+      const decoded = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
+
+      if (!decoded || !decoded.role || !allowedRoles.includes(decoded.role)) {
+        return res.status(403).json({
+          message: `Permisos insuficientes: Esta operación requiere rol ${allowedRoles
+            .join(" o ")
+            .toUpperCase()}.`
+        });
+      }
+
+      req.user = decoded;
+      next();
+    } catch {
+      return res.status(401).json({
+        message: "Token de sesión inválido o expirado. Inicia sesión nuevamente."
+      });
+    }
+  };
+}
+
 // Health & Database Status Check
 app.get("/api/health", (req, res) => {
   res.json({
@@ -32,7 +66,7 @@ app.get("/api/db-status", (req, res) => {
   res.json(getDbStatus());
 });
 
-app.post("/api/db-connect", async (req, res) => {
+app.post("/api/db-connect", requireRole(["admin"]), async (req, res) => {
   const { mongoUri } = req.body;
   if (!mongoUri || !mongoUri.trim()) {
     return res
@@ -195,6 +229,7 @@ app.get("/api/stats", (req, res) => {
 
 // ==========================================
 // ENTIDAD 1: MASCOTAS (PETS) - CRUD COMPLETO
+// Lectura pública; escritura protegida para ONG y Admin
 // ==========================================
 app.get("/api/pets", (req, res) => {
   const db = readDb();
@@ -208,7 +243,7 @@ app.get("/api/pets/:id", (req, res) => {
   res.json(pet);
 });
 
-app.post("/api/pets", (req, res) => {
+app.post("/api/pets", requireRole(["ong", "admin"]), (req, res) => {
   const db = readDb();
   const {
     name,
@@ -271,7 +306,7 @@ app.post("/api/pets", (req, res) => {
   res.status(201).json(newPet);
 });
 
-app.put("/api/pets/:id", (req, res) => {
+app.put("/api/pets/:id", requireRole(["ong", "admin"]), (req, res) => {
   const db = readDb();
   const index = db.pets.findIndex((p) => p.id === req.params.id);
   if (index === -1) {
@@ -294,7 +329,7 @@ app.put("/api/pets/:id", (req, res) => {
   res.json(updatedPet);
 });
 
-app.patch("/api/pets/:id/status", (req, res) => {
+app.patch("/api/pets/:id/status", requireRole(["ong", "admin"]), (req, res) => {
   const db = readDb();
   const index = db.pets.findIndex((p) => p.id === req.params.id);
   if (index === -1) {
@@ -306,7 +341,7 @@ app.patch("/api/pets/:id/status", (req, res) => {
   res.json(db.pets[index]);
 });
 
-app.delete("/api/pets/:id", (req, res) => {
+app.delete("/api/pets/:id", requireRole(["ong", "admin"]), (req, res) => {
   const db = readDb();
   const exists = db.pets.some((p) => p.id === req.params.id);
   if (!exists) {
@@ -319,6 +354,7 @@ app.delete("/api/pets/:id", (req, res) => {
 
 // ==========================================
 // ENTIDAD 2: ONGS / REFUGIOS - CRUD COMPLETO
+// Lectura pública; escritura protegida para Administrador
 // ==========================================
 app.get("/api/ongs", (req, res) => {
   const db = readDb();
@@ -332,7 +368,7 @@ app.get("/api/ongs/:id", (req, res) => {
   res.json(ong);
 });
 
-app.post("/api/ongs", (req, res) => {
+app.post("/api/ongs", requireRole(["admin"]), (req, res) => {
   const db = readDb();
   const {
     name,
@@ -380,7 +416,7 @@ app.post("/api/ongs", (req, res) => {
   res.status(201).json(newOng);
 });
 
-app.put("/api/ongs/:id", (req, res) => {
+app.put("/api/ongs/:id", requireRole(["admin"]), (req, res) => {
   const db = readDb();
   const index = db.ongs.findIndex((o) => o.id === req.params.id);
   if (index === -1) {
@@ -410,7 +446,7 @@ app.put("/api/ongs/:id", (req, res) => {
   res.json(updatedOng);
 });
 
-app.delete("/api/ongs/:id", (req, res) => {
+app.delete("/api/ongs/:id", requireRole(["admin"]), (req, res) => {
   const db = readDb();
   const exists = db.ongs.some((o) => o.id === req.params.id);
   if (!exists) {
@@ -423,6 +459,7 @@ app.delete("/api/ongs/:id", (req, res) => {
 
 // ===========================================================
 // ENTIDAD 3: HISTORIAL Y SOLICITUDES DE ADOPCIÓN - CRUD COMPLETO
+// Creación abierta para adoptantes; edición/eliminación protegida para Admin/ONG
 // ===========================================================
 app.get("/api/adoptions", (req, res) => {
   const db = readDb();
@@ -484,7 +521,7 @@ app.post("/api/adoptions", (req, res) => {
   res.status(201).json(newAdoption);
 });
 
-app.put("/api/adoptions/:id", (req, res) => {
+app.put("/api/adoptions/:id", requireRole(["admin", "ong"]), (req, res) => {
   const db = readDb();
   const index = db.adoptions.findIndex((a) => a.id === req.params.id);
   if (index === -1) {
@@ -525,7 +562,7 @@ app.put("/api/adoptions/:id", (req, res) => {
   res.json(updatedAdoption);
 });
 
-app.delete("/api/adoptions/:id", (req, res) => {
+app.delete("/api/adoptions/:id", requireRole(["admin"]), (req, res) => {
   const db = readDb();
   const exists = db.adoptions.some((a) => a.id === req.params.id);
   if (!exists) {
@@ -577,7 +614,7 @@ app.post("/api/contacts", (req, res) => {
   res.status(201).json(newContact);
 });
 
-app.put("/api/contacts/:id", (req, res) => {
+app.put("/api/contacts/:id", requireRole(["admin", "ong"]), (req, res) => {
   const db = readDb();
   const index = db.contacts.findIndex((c) => c.id === req.params.id);
   if (index === -1) {
@@ -592,7 +629,7 @@ app.put("/api/contacts/:id", (req, res) => {
   res.json(db.contacts[index]);
 });
 
-app.delete("/api/contacts/:id", (req, res) => {
+app.delete("/api/contacts/:id", requireRole(["admin"]), (req, res) => {
   const db = readDb();
   db.contacts = db.contacts.filter((c) => c.id !== req.params.id);
   writeDb(db);
@@ -600,7 +637,7 @@ app.delete("/api/contacts/:id", (req, res) => {
 });
 
 // Reset demo database
-app.post("/api/reset", (req, res) => {
+app.post("/api/reset", requireRole(["admin"]), (req, res) => {
   const fresh = resetDb();
   res.json({ message: "Base de datos restaurada con éxito", data: fresh });
 });

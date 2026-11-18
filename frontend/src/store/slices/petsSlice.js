@@ -2,6 +2,14 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 const API_URL = "/api/pets";
 
+function getAuthHeaders(getState) {
+  const token = getState()?.auth?.token;
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+}
+
 export const fetchPets = createAsyncThunk("pets/fetchAll", async (_, { rejectWithValue }) => {
   try {
     const res = await fetch(API_URL);
@@ -12,33 +20,39 @@ export const fetchPets = createAsyncThunk("pets/fetchAll", async (_, { rejectWit
   }
 });
 
-export const createPet = createAsyncThunk("pets/create", async (petData, { rejectWithValue }) => {
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(petData)
-    });
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || "No se pudo registrar la mascota");
+export const createPet = createAsyncThunk(
+  "pets/create",
+  async (petData, { getState, rejectWithValue }) => {
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: getAuthHeaders(getState),
+        body: JSON.stringify(petData)
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "No se pudo registrar la mascota");
+      }
+      return await res.json();
+    } catch (err) {
+      return rejectWithValue(err.message);
     }
-    return await res.json();
-  } catch (err) {
-    return rejectWithValue(err.message);
   }
-});
+);
 
 export const updatePet = createAsyncThunk(
   "pets/update",
-  async ({ id, data }, { rejectWithValue }) => {
+  async ({ id, data }, { getState, rejectWithValue }) => {
     try {
       const res = await fetch(`${API_URL}/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(getState),
         body: JSON.stringify(data)
       });
-      if (!res.ok) throw new Error("No se pudo actualizar la mascota");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "No se pudo actualizar la mascota");
+      }
       return await res.json();
     } catch (err) {
       return rejectWithValue(err.message);
@@ -48,14 +62,17 @@ export const updatePet = createAsyncThunk(
 
 export const updatePetStatus = createAsyncThunk(
   "pets/updateStatus",
-  async ({ id, status }, { rejectWithValue }) => {
+  async ({ id, status }, { getState, rejectWithValue }) => {
     try {
       const res = await fetch(`${API_URL}/${id}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(getState),
         body: JSON.stringify({ status })
       });
-      if (!res.ok) throw new Error("No se pudo cambiar el estado de la mascota");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "No se pudo cambiar el estado de la mascota");
+      }
       return await res.json();
     } catch (err) {
       return rejectWithValue(err.message);
@@ -63,15 +80,24 @@ export const updatePetStatus = createAsyncThunk(
   }
 );
 
-export const deletePet = createAsyncThunk("pets/delete", async (id, { rejectWithValue }) => {
-  try {
-    const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("No se pudo dar de baja / eliminar la mascota");
-    return id;
-  } catch (err) {
-    return rejectWithValue(err.message);
+export const deletePet = createAsyncThunk(
+  "pets/delete",
+  async (id, { getState, rejectWithValue }) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(getState)
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "No se pudo dar de baja / eliminar la mascota");
+      }
+      return id;
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
   }
-});
+);
 
 const petsSlice = createSlice({
   name: "pets",

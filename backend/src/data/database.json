@@ -213,34 +213,12 @@
       "city": "Maracaibo",
       "vaccinated": true,
       "sterilized": true,
-      "microchipped": true,
+      "microchipped": false,
       "urgencyLevel": "Media",
       "status": "Disponible",
       "description": "Bruno es un gigante bondadoso. Fue rehabilitado tras sufrir desnutrición y hoy goza de excelente salud. Es paciente con niños pequeños y excelente guardián familiar.",
       "image": "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=800&q=80",
       "createdAt": "2026-11-05"
-    },
-    {
-      "id": "pet-8",
-      "name": "Simba",
-      "species": "Gato",
-      "breed": "Siamés Mestizo",
-      "age": 1,
-      "ageUnit": "años",
-      "gender": "Macho",
-      "size": "Pequeño",
-      "weight": "3.6 kg",
-      "ongId": "ong-1",
-      "ongName": "Fundación Huellas de Esperanza",
-      "city": "Caracas",
-      "vaccinated": true,
-      "sterilized": true,
-      "microchipped": true,
-      "urgencyLevel": "Media",
-      "status": "Adoptado",
-      "description": "Simba es un gato conversador, inteligente y muy apegado a su familia humana. Ya encontró un hogar definitivo gracias a la plataforma.",
-      "image": "https://images.unsplash.com/photo-1513360382564-850120167213?auto=format&fit=crop&w=800&q=80",
-      "createdAt": "2026-08-20"
     }
   ],
   "adoptions": [
@@ -327,7 +305,7 @@
       "category": "Voluntariado",
       "ongId": "ong-1",
       "message": "Hola equipo de Animal Advisor, tengo espacio en mi apartamento en Caracas para recibir gatitos en tránsito mientras consiguen adopción definitiva.",
-      "status": "Respondido",
+      "status": "Pendiente",
       "createdAt": "2026-11-12"
     },
     {
