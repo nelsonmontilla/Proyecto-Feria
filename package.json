@@ -1,0 +1,12 @@
+{
+  "name": "animal-advisor-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lanzador unificado de Animal Advisor (Backend + Frontend)",
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "start:backend": "cd backend && npm start",
+    "start:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build"
+  }
+}
