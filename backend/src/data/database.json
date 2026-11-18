@@ -346,6 +346,24 @@
       "password": "user123",
       "role": "user",
       "title": "Adoptante Registrada"
+    },
+    {
+      "id": "usr-ong-2",
+      "name": "Refugio Patitas Unidas",
+      "email": "ong@patitasunidas.org",
+      "password": "ong123",
+      "role": "ong",
+      "ongId": "ong-2",
+      "title": "ONG Verificada (Valencia)"
+    },
+    {
+      "id": "usr-ong-3",
+      "name": "Santuario Bigotes y Colitas",
+      "email": "ong@bigotesycolitas.org",
+      "password": "ong123",
+      "role": "ong",
+      "ongId": "ong-3",
+      "title": "ONG Verificada (Barquisimeto)"
     }
   ]
 }

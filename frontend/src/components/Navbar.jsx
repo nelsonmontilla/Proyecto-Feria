@@ -12,8 +12,7 @@ import {
   AlertCircle,
   Sparkles,
   KeyRound,
-  LogOut,
-  User
+  LogOut
 } from "lucide-react";
 import { useShelterStats } from "../hooks/useShelterStats";
 import { useLocalStorageFavorites } from "../hooks/useLocalStorageFavorites";
@@ -29,7 +28,7 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Navegación dinámica según el rol autenticado
+  // Enlaces limpios en una sola línea (whitespace-nowrap) sin duplicar el botón de Favoritos
   const navItems = [
     { to: "/", label: "Inicio", icon: Home },
     {
@@ -38,9 +37,6 @@ export default function Navbar() {
       icon: PawPrint,
       badge: stats.availablePets
     },
-    ...(isAuthenticated
-      ? [{ to: "/mi-cuenta", label: "Mis Favoritos y Solicitudes", icon: User }]
-      : []),
     ...(isOng ? [{ to: "/ong", label: "Pestaña ONG", icon: Building2 }] : []),
     ...(isAdmin
       ? [{ to: "/admin", label: "Panel Admin", icon: ShieldCheck }]
@@ -88,10 +84,17 @@ export default function Navbar() {
     navigate("/");
   };
 
+  const roleBadgeLabel =
+    user?.role === "admin"
+      ? "ADMIN"
+      : user?.role === "ong"
+      ? "ONG"
+      : "USUARIO";
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-brand-cyan/20 shadow-sm">
       {/* Top Alert Bar */}
-      <div className="bg-logo-gradient text-white text-xs sm:text-sm py-2 px-4">
+      <div className="bg-logo-gradient text-white text-xs py-2 px-4">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 font-medium">
             <AlertCircle className="w-4 h-4 text-brand-amber shrink-0" />
@@ -103,7 +106,7 @@ export default function Navbar() {
               ({stats.totalOccupancy}/{stats.totalCapacity} plazas ocupadas).
             </span>
           </div>
-          <div className="hidden md:flex items-center gap-4 text-xs font-semibold">
+          <div className="hidden md:flex items-center gap-4 text-xs font-semibold whitespace-nowrap">
             <button
               type="button"
               onClick={() => handleQuickJump("problematica")}
@@ -128,26 +131,26 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Main Navigation */}
+      {/* Main Navigation Row */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          {/* Brand Logo */}
+        <div className="flex items-center justify-between h-20 gap-4">
+          {/* Brand Logo (shrink-0 & whitespace-nowrap para que nunca se desborde ni parta líneas) */}
           <NavLink
             to="/"
-            className="flex items-center gap-3 group cursor-pointer focus:outline-none"
+            className="flex items-center gap-3 group cursor-pointer focus:outline-none shrink-0"
           >
-            <div className="relative w-14 h-14 rounded-full p-0.5 bg-logo-gradient shadow-md overflow-hidden shrink-0">
+            <div className="relative w-12 h-12 sm:w-13 sm:h-13 rounded-full p-0.5 bg-logo-gradient shadow-md overflow-hidden shrink-0">
               <img
                 src="/logo.jpg"
                 alt="Logo Animal Advisor - Guide to Pet Adoption"
                 className="w-full h-full object-cover rounded-full bg-white group-hover:scale-105 transition-transform duration-200"
               />
             </div>
-            <div>
-              <span className="block text-xl sm:text-2xl font-extrabold tracking-tight text-brand-navy font-display leading-none">
+            <div className="whitespace-nowrap">
+              <span className="block text-lg sm:text-xl font-extrabold tracking-tight text-brand-navy font-display leading-none">
                 ANIMAL ADVISOR
               </span>
-              <span className="block text-[11px] font-bold tracking-widest text-brand-slate uppercase mt-1">
+              <span className="block text-[10px] font-bold tracking-widest text-brand-slate uppercase mt-1">
                 Guide to Pet Adoption
               </span>
             </div>
@@ -155,7 +158,7 @@ export default function Navbar() {
 
           {/* Desktop Nav Links */}
           <nav
-            className="hidden lg:flex items-center gap-1.5"
+            className="hidden xl:flex items-center gap-1.5"
             aria-label="Navegación Principal"
           >
             {navItems.map((item) => {
@@ -165,7 +168,7 @@ export default function Navbar() {
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
-                    `flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer ${
+                    `flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
                       isActive
                         ? "bg-brand-navy text-white shadow-sm"
                         : "text-brand-navy/80 hover:bg-brand-ice hover:text-brand-navy"
@@ -175,7 +178,7 @@ export default function Navbar() {
                   <Icon className="w-4 h-4 shrink-0" />
                   <span>{item.label}</span>
                   {item.badge !== undefined && (
-                    <span className="ml-0.5 px-2 py-0.5 text-xs font-extrabold rounded-full bg-brand-amber text-white">
+                    <span className="ml-0.5 px-2 py-0.5 text-xs font-extrabold rounded-full bg-brand-amber text-white leading-none">
                       {item.badge}
                     </span>
                   )}
@@ -184,68 +187,75 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Right CTA: Favorites (Requires Login) + Auth Role Controls */}
-          <div className="hidden sm:flex items-center gap-2.5">
+          {/* Right CTA: Favorites + Auth User Pill (Compact, Single-Line Aligned) */}
+          <div className="hidden sm:flex items-center gap-2.5 shrink-0">
             <button
               type="button"
               onClick={handleFavoritesNavClick}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-cream border border-brand-amber/30 text-brand-navy text-xs font-bold hover:bg-brand-amber/15 transition-colors cursor-pointer"
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                location.pathname === "/mi-cuenta"
+                  ? "bg-brand-amber text-white border-brand-amber shadow-sm"
+                  : "bg-brand-cream border-brand-amber/30 text-brand-navy hover:bg-brand-amber/15"
+              }`}
               title={
                 isAuthenticated
-                  ? `Favoritos de ${user.name}`
+                  ? `Ver favoritos y solicitudes de ${user.name}`
                   : "Inicia sesión para ver tus favoritos"
               }
             >
-              <Heart className="w-4 h-4 text-brand-amber fill-brand-amber" />
+              <Heart
+                className={`w-4 h-4 shrink-0 ${
+                  location.pathname === "/mi-cuenta"
+                    ? "text-white fill-white"
+                    : "text-brand-amber fill-brand-amber"
+                }`}
+              />
               <span>
-                {isAuthenticated ? `Mis Favoritos (${favoritesCount})` : "Favoritos"}
+                {isAuthenticated ? `Favoritos (${favoritesCount})` : "Favoritos"}
               </span>
             </button>
 
             {isAuthenticated ? (
               <div className="flex items-center gap-2">
-                <div className="px-3 py-1.5 rounded-xl bg-brand-ice border border-brand-cyan/30 text-xs">
-                  <span className="block font-extrabold text-brand-navy leading-tight">
-                    {user.name}
-                  </span>
-                  <span className="block text-[10px] font-extrabold uppercase text-brand-teal">
-                    Rol:{" "}
-                    {user.role === "admin"
-                      ? "Administrador"
-                      : user.role === "ong"
-                      ? "ONG"
-                      : "Usuario"}
-                  </span>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-brand-ice border border-brand-cyan/30 whitespace-nowrap">
+                  <div className="text-left">
+                    <span className="block text-xs font-extrabold text-brand-navy leading-tight max-w-[140px] truncate">
+                      {user.name}
+                    </span>
+                    <span className="block text-[10px] font-extrabold uppercase text-brand-teal leading-tight">
+                      Rol: {roleBadgeLabel}
+                    </span>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={handleLogout}
                   title="Cerrar sesión"
-                  className="px-3.5 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-4 h-4 shrink-0" />
                   <span>Salir</span>
                 </button>
               </div>
             ) : (
               <NavLink
                 to="/login"
-                className="px-4 py-2.5 rounded-xl bg-brand-navy hover:bg-brand-teal text-white font-extrabold text-xs sm:text-sm shadow-sm flex items-center gap-2 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-brand-navy hover:bg-brand-teal text-white font-extrabold text-xs sm:text-sm shadow-sm flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer"
               >
-                <KeyRound className="w-4 h-4 text-brand-amber" />
-                <span>Login (Usuario / Admin)</span>
+                <KeyRound className="w-4 h-4 text-brand-amber shrink-0" />
+                <span>Iniciar Sesión</span>
               </NavLink>
             )}
           </div>
 
-          {/* Mobile Hamburger Button */}
+          {/* Mobile / Tablet Hamburger Button */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={
               mobileMenuOpen ? "Cerrar menú" : "Abrir menú de navegación"
             }
-            className="lg:hidden p-2.5 rounded-xl text-brand-navy hover:bg-brand-ice focus:outline-none focus:ring-2 focus:ring-brand-cyan cursor-pointer"
+            className="xl:hidden p-2.5 rounded-xl text-brand-navy hover:bg-brand-ice focus:outline-none focus:ring-2 focus:ring-brand-cyan cursor-pointer shrink-0"
           >
             {mobileMenuOpen ? (
               <X className="w-6 h-6" />
@@ -256,9 +266,9 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu Drawer */}
+      {/* Mobile / Tablet Menu Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-t border-slate-100 px-4 pt-3 pb-6 space-y-2 shadow-lg">
+        <div className="xl:hidden bg-white border-t border-slate-100 px-4 pt-3 pb-6 space-y-2 shadow-lg">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -296,7 +306,7 @@ export default function Navbar() {
               <Heart className="w-4 h-4 text-brand-amber fill-brand-amber" />
               <span>
                 {isAuthenticated
-                  ? `Mis Favoritos (${favoritesCount})`
+                  ? `Mis Favoritos y Solicitudes (${favoritesCount})`
                   : "Favoritos (Requiere Login)"}
               </span>
             </button>
