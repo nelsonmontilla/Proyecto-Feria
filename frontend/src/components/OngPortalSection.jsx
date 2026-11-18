@@ -1,16 +1,16 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   Building2,
   PlusCircle,
   Edit3,
   Trash2,
-  CheckCircle2,
   Search,
   RotateCcw,
   PawPrint,
   ArchiveRestore,
-  Save
+  Save,
+  Lock
 } from "lucide-react";
 import {
   createPet,
@@ -21,6 +21,7 @@ import {
 import { useFormValidation } from "../hooks/useFormValidation";
 import { useDebounce } from "../hooks/useDebounce";
 import { useNotificationToast } from "../hooks/useNotificationToast";
+import { useAuth } from "../hooks/useAuth";
 
 const INITIAL_PET_FORM = {
   name: "",
@@ -63,10 +64,21 @@ export default function OngPortalSection() {
   const dispatch = useDispatch();
   const pets = useSelector((state) => state.pets.items);
   const ongs = useSelector((state) => state.ongs.items);
+  const { user, isAdmin } = useAuth();
   const { notify } = useNotificationToast();
 
+  // Si inició sesión como una ONG específica, su ongId queda bloqueado a su propia fundación
+  const isOngRole = user?.role === "ong";
+  const myOngId = isOngRole ? user?.ongId || "ong-1" : null;
+  const myOngObj = useMemo(
+    () => (myOngId ? ongs.find((o) => o.id === myOngId) : null),
+    [ongs, myOngId]
+  );
+
   const [editingPetId, setEditingPetId] = useState(null);
-  const [selectedOngFilter, setSelectedOngFilter] = useState("all");
+  const [selectedOngFilter, setSelectedOngFilter] = useState(
+    myOngId || "all"
+  );
   const [tableSearch, setTableSearch] = useState("");
   const debouncedTableSearch = useDebounce(tableSearch, 200);
 
@@ -79,12 +91,37 @@ export default function OngPortalSection() {
     setFormValues,
     resetForm,
     validateAll
-  } = useFormValidation(INITIAL_PET_FORM, validatePetForm);
+  } = useFormValidation(
+    {
+      ...INITIAL_PET_FORM,
+      ongId: myOngId || "ong-1",
+      city: myOngObj?.city || "Caracas"
+    },
+    validatePetForm
+  );
 
+  // Sincronizar el filtro y el formulario cuando cambia la ONG autenticada
+  useEffect(() => {
+    if (isOngRole && myOngId) {
+      setSelectedOngFilter(myOngId);
+      setFormValues((prev) => ({
+        ...prev,
+        ongId: myOngId,
+        city: myOngObj?.city || prev.city || "Caracas"
+      }));
+    }
+  }, [isOngRole, myOngId, myOngObj, setFormValues]);
+
+  // Lista de mascotas estrictamente aislada para la ONG que inició sesión
   const filteredTablePets = useMemo(() => {
     const q = debouncedTableSearch.trim().toLowerCase();
     return pets.filter((pet) => {
-      if (selectedOngFilter !== "all" && pet.ongId !== selectedOngFilter) {
+      // Si el usuario es una ONG, SOLO ve las mascotas de su propia ONG
+      if (isOngRole && pet.ongId !== myOngId) {
+        return false;
+      }
+      // Si es el Administrador general, puede filtrar por ONG o ver todas
+      if (!isOngRole && selectedOngFilter !== "all" && pet.ongId !== selectedOngFilter) {
         return false;
       }
       if (q) {
@@ -93,9 +130,18 @@ export default function OngPortalSection() {
       }
       return true;
     });
-  }, [pets, selectedOngFilter, debouncedTableSearch]);
+  }, [pets, isOngRole, myOngId, selectedOngFilter, debouncedTableSearch]);
 
   const handleEditClick = (pet) => {
+    if (isOngRole && pet.ongId !== myOngId) {
+      notify({
+        title: "Acción no permitida",
+        message: "Solo puedes editar mascotas que pertenecen a tu propia ONG.",
+        type: "error"
+      });
+      return;
+    }
+
     setEditingPetId(pet.id);
     setFormValues({
       name: pet.name || "",
@@ -106,8 +152,8 @@ export default function OngPortalSection() {
       gender: pet.gender || "Macho",
       size: pet.size || "Mediano",
       weight: pet.weight || "10 kg",
-      ongId: pet.ongId || "ong-1",
-      city: pet.city || "Caracas",
+      ongId: isOngRole ? myOngId : pet.ongId || "ong-1",
+      city: pet.city || myOngObj?.city || "Caracas",
       vaccinated: Boolean(pet.vaccinated),
       sterilized: Boolean(pet.sterilized),
       microchipped: Boolean(pet.microchipped),
@@ -123,31 +169,42 @@ export default function OngPortalSection() {
   const handleCancelEdit = () => {
     setEditingPetId(null);
     resetForm();
+    if (isOngRole && myOngId) {
+      setFormValues({
+        ...INITIAL_PET_FORM,
+        ongId: myOngId,
+        city: myOngObj?.city || "Caracas"
+      });
+    }
   };
 
   const handleSubmitPet = async (e) => {
     e.preventDefault();
     if (!validateAll()) return;
 
+    const payload = {
+      ...values,
+      ongId: isOngRole ? myOngId : values.ongId
+    };
+
     setIsSubmitting(true);
     try {
       if (editingPetId) {
-        await dispatch(updatePet({ id: editingPetId, data: values })).unwrap();
+        await dispatch(updatePet({ id: editingPetId, data: payload })).unwrap();
         notify({
           title: "Mascota actualizada",
-          message: `Los datos de ${values.name} fueron actualizados correctamente.`,
+          message: `Los datos de ${payload.name} fueron actualizados correctamente.`,
           type: "success"
         });
       } else {
-        await dispatch(createPet(values)).unwrap();
+        await dispatch(createPet(payload)).unwrap();
         notify({
-          title: "Mascota registrada en adopción",
-          message: `${values.name} ya está visible en el catálogo interactivo.`,
+          title: "Mascota registrada en tu ONG",
+          message: `${payload.name} ya está visible en el catálogo interactivo.`,
           type: "success"
         });
       }
-      setEditingPetId(null);
-      resetForm();
+      handleCancelEdit();
     } catch (err) {
       notify({
         title: "Error al guardar mascota",
@@ -159,6 +216,7 @@ export default function OngPortalSection() {
   };
 
   const handleQuickStatusChange = async (pet, newStatus) => {
+    if (isOngRole && pet.ongId !== myOngId) return;
     try {
       await dispatch(updatePetStatus({ id: pet.id, status: newStatus })).unwrap();
       notify({
@@ -176,15 +234,15 @@ export default function OngPortalSection() {
   };
 
   const handleDeletePet = async (pet) => {
+    if (isOngRole && pet.ongId !== myOngId) return;
     try {
       await dispatch(deletePet(pet.id)).unwrap();
       if (editingPetId === pet.id) {
-        setEditingPetId(null);
-        resetForm();
+        handleCancelEdit();
       }
       notify({
         title: "Mascota dada de baja definitivamente",
-        message: `${pet.name} fue retirado de los registros de adopción.`,
+        message: `${pet.name} fue retirado de los registros de tu ONG.`,
         type: "warning"
       });
     } catch (err) {
@@ -204,37 +262,60 @@ export default function OngPortalSection() {
           <div>
             <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-teal/15 text-brand-navy text-xs font-extrabold uppercase tracking-wider">
               <Building2 className="w-3.5 h-3.5 text-brand-teal" />
-              Pestaña Exclusiva para ONGs y Albergues
+              {isOngRole
+                ? `Panel Independiente: ${myOngObj?.name || user?.name}`
+                : "Pestaña de Gestión de Mascotas por ONG"}
             </span>
             <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-brand-navy font-display">
-              Gestión de Mascotas en Adopción (CRUD Entidad #1)
+              {isOngRole
+                ? `Mascotas de ${myOngObj?.name || user?.name}`
+                : "Gestión de Mascotas en Adopción (CRUD Entidad #1)"}
             </h2>
             <p className="mt-1.5 text-slate-600 text-base max-w-2xl">
-              Registra nuevos perros y gatos rescatados, actualiza su ficha clínica, visualiza el inventario de cada refugio y da de baja aquellos casos adoptados o retirados.
+              {isOngRole
+                ? "Aquí solo se muestran y gestionan las mascotas pertenecientes a tu ONG. No es posible alterar ni dar de baja registros de otros albergues."
+                : "Registra nuevos perros y gatos rescatados, actualiza su ficha clínica y da de baja aquellos casos adoptados o retirados."}
             </p>
           </div>
 
-          <div className="flex items-center gap-3 bg-brand-ice px-4 py-3 rounded-2xl border border-brand-cyan/30">
-            <label
-              htmlFor="ong-portal-selector"
-              className="text-xs font-extrabold text-brand-navy whitespace-nowrap"
-            >
-              Filtrar por ONG:
-            </label>
-            <select
-              id="ong-portal-selector"
-              value={selectedOngFilter}
-              onChange={(e) => setSelectedOngFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-xl bg-white border border-brand-cyan/30 text-xs font-bold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-cyan cursor-pointer"
-            >
-              <option value="all">Todas las ONG ({pets.length} mascotas)</option>
-              {ongs.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name} ({o.city})
-                </option>
-              ))}
-            </select>
-          </div>
+          {isOngRole ? (
+            <div className="flex items-center gap-3 bg-brand-navy text-white px-5 py-3 rounded-2xl shadow-sm">
+              <Lock className="w-4 h-4 text-brand-amber shrink-0" />
+              <div className="text-xs">
+                <span className="block text-brand-mint font-bold uppercase">
+                  Sesión Independiente de ONG Activa
+                </span>
+                <strong className="text-sm font-extrabold">
+                  {myOngObj?.name || user?.name} ({myOngObj?.city || "Sede Activa"}) —{" "}
+                  {filteredTablePets.length} mascotas propias
+                </strong>
+              </div>
+            </div>
+          ) : (
+            isAdmin && (
+              <div className="flex items-center gap-3 bg-brand-ice px-4 py-3 rounded-2xl border border-brand-cyan/30">
+                <label
+                  htmlFor="ong-portal-selector"
+                  className="text-xs font-extrabold text-brand-navy whitespace-nowrap"
+                >
+                  Vista Admin — Filtrar ONG:
+                </label>
+                <select
+                  id="ong-portal-selector"
+                  value={selectedOngFilter}
+                  onChange={(e) => setSelectedOngFilter(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-white border border-brand-cyan/30 text-xs font-bold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-cyan cursor-pointer"
+                >
+                  <option value="all">Todas las ONG ({pets.length} mascotas)</option>
+                  {ongs.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name} ({o.city})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -259,7 +340,9 @@ export default function OngPortalSection() {
                       : "Registrar Nueva Mascota"}
                   </h3>
                   <p className="text-xs text-brand-slate">
-                    Formulario conectado al Backend y Redux
+                    {isOngRole
+                      ? `Registro exclusivo para ${myOngObj?.name || user?.name}`
+                      : "Formulario conectado al Backend y Redux"}
                   </p>
                 </div>
               </div>
@@ -348,19 +431,28 @@ export default function OngPortalSection() {
                   >
                     ONG Responsable *
                   </label>
-                  <select
-                    id="pet-ong"
-                    name="ongId"
-                    value={values.ongId}
-                    onChange={handleChange}
-                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-cyan cursor-pointer"
-                  >
-                    {ongs.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.name}
-                      </option>
-                    ))}
-                  </select>
+                  {isOngRole ? (
+                    <div className="w-full px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-extrabold text-brand-navy flex items-center justify-between">
+                      <span className="truncate">
+                        {myOngObj?.name || user?.name}
+                      </span>
+                      <Lock className="w-3.5 h-3.5 text-brand-teal shrink-0 ml-1" />
+                    </div>
+                  ) : (
+                    <select
+                      id="pet-ong"
+                      name="ongId"
+                      value={values.ongId}
+                      onChange={handleChange}
+                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-cyan cursor-pointer"
+                    >
+                      {ongs.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -589,23 +681,33 @@ export default function OngPortalSection() {
                 ) : (
                   <>
                     <PlusCircle className="w-4 h-4 text-brand-mint" />
-                    <span>Publicar Mascota en el Catálogo</span>
+                    <span>
+                      Publicar Mascota en {myOngObj?.name || "el Catálogo"}
+                    </span>
                   </>
                 )}
               </button>
             </form>
           </div>
 
-          {/* RIGHT COLUMN: TABLA DE GESTIÓN DE MASCOTAS PARA LAS ONG */}
+          {/* RIGHT COLUMN: TABLA DE GESTIÓN DE MASCOTAS PROPIAS DE LA ONG */}
           <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 shadow-soft overflow-hidden">
             <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/60">
               <div>
                 <h3 className="text-lg font-extrabold text-brand-navy font-display flex items-center gap-2">
                   <PawPrint className="w-5 h-5 text-brand-amber" />
-                  <span>Tabla de Control de Mascotas ({filteredTablePets.length})</span>
+                  <span>
+                    {isOngRole
+                      ? `Mis Mascotas Registradas (${filteredTablePets.length})`
+                      : `Tabla de Control de Mascotas (${filteredTablePets.length})`}
+                  </span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Visualiza, edita o da de baja a las mascotas registradas por las ONG.
+                  {isOngRole
+                    ? `Mostrando únicamente las mascotas registradas por ${
+                        myOngObj?.name || user?.name
+                      }.`
+                    : "Visualiza, edita o da de baja a las mascotas registradas."}
                 </p>
               </div>
 
@@ -615,7 +717,7 @@ export default function OngPortalSection() {
                   type="text"
                   value={tableSearch}
                   onChange={(e) => setTableSearch(e.target.value)}
-                  placeholder="Filtrar en tabla..."
+                  placeholder="Filtrar en tus mascotas..."
                   aria-label="Filtrar mascotas en tabla"
                   className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-brand-cyan"
                 />
@@ -760,7 +862,7 @@ export default function OngPortalSection() {
                         colSpan={5}
                         className="py-10 text-center text-sm text-slate-500"
                       >
-                        No hay mascotas que coincidan con el filtro seleccionado.
+                        No hay mascotas registradas para esta ONG con el filtro actual.
                       </td>
                     </tr>
                   )}

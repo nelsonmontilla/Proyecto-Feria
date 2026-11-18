@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   ShieldCheck,
   Building2,
@@ -17,6 +18,7 @@ import { useNotificationToast } from "../hooks/useNotificationToast";
 
 export default function LoginSection() {
   const navigate = useNavigate();
+  const ongs = useSelector((state) => state.ongs.items);
   const { login, register, loading, error, resetError, dbStatus } = useAuth();
   const { notify } = useNotificationToast();
 
@@ -25,7 +27,8 @@ export default function LoginSection() {
     name: "",
     email: "",
     password: "",
-    role: "user"
+    role: "user",
+    ongId: "ong-1"
   });
 
   const handleChange = (e) => {
@@ -104,29 +107,29 @@ export default function LoginSection() {
           <div className="lg:col-span-6 space-y-6">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-navy/10 text-brand-navy text-xs font-extrabold uppercase tracking-wider">
               <KeyRound className="w-4 h-4 text-brand-amber" />
-              <span>Control de Acceso por Roles</span>
+              <span>Control de Acceso por Roles e Independencia por ONG</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-extrabold text-brand-navy font-display leading-tight">
-              Portal de Acceso Separado: Usuario Adoptante, ONG y Administrador
+              Portal de Acceso Separado: Usuario Adoptante, ONGs y Administrador
             </h1>
 
             <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-              Para proteger la integridad del sistema, separamos mediante autenticación las funciones públicas de adopción del <strong>Panel de Supervisión del Administrador</strong> y la <strong>Pestaña de Gestión de ONGs</strong>.
+              Cada usuario cuenta con su propia lista privada de <strong>Favoritos</strong>, y cada <strong>ONG</strong> visualiza y administra únicamente sus propias mascotas registradas.
             </p>
 
             {/* Quick 1-Click Role Switcher Cards for Evaluation */}
-            <div className="bg-white rounded-3xl p-6 border border-brand-cyan/30 shadow-soft space-y-4">
+            <div className="bg-white rounded-3xl p-6 border border-brand-cyan/30 shadow-soft space-y-3.5">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-extrabold uppercase tracking-wider text-brand-navy">
                   Credenciales Rápidas de Prueba (1 Clic)
                 </h2>
                 <span className="text-xs font-bold text-brand-teal">
-                  Haz clic para entrar directamente
+                  Haz clic para probar cada rol
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-2.5">
                 {/* Admin Quick Login */}
                 <button
                   type="button"
@@ -138,28 +141,28 @@ export default function LoginSection() {
                       "Administrador"
                     )
                   }
-                  className="w-full p-4 rounded-2xl bg-brand-navy hover:bg-brand-teal text-white text-left transition-all flex items-center justify-between group cursor-pointer shadow-sm"
+                  className="w-full p-3.5 rounded-2xl bg-brand-navy hover:bg-brand-teal text-white text-left transition-all flex items-center justify-between group cursor-pointer shadow-sm"
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-                      <ShieldCheck className="w-6 h-6 text-brand-amber" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-5 h-5 text-brand-amber" />
                     </div>
                     <div>
                       <p className="font-extrabold text-sm font-display flex items-center gap-2">
-                        <span>1. Entrar como Administrador</span>
+                        <span>1. Administrador General</span>
                         <span className="px-2 py-0.5 text-[10px] rounded-full bg-brand-amber text-brand-navy font-extrabold">
-                          ROL ADMIN
+                          ADMIN
                         </span>
                       </p>
-                      <p className="text-xs text-white/80 mt-0.5">
-                        admin@animaladvisor.org | Clave: admin123 — Supervisa ONGs e Historial
+                      <p className="text-xs text-white/80">
+                        admin@animaladvisor.org | Supervisa todas las ONGs e Historial
                       </p>
                     </div>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-brand-mint group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 text-brand-mint group-hover:translate-x-1 transition-transform" />
                 </button>
 
-                {/* ONG Quick Login */}
+                {/* ONG 1 Quick Login */}
                 <button
                   type="button"
                   onClick={() =>
@@ -167,28 +170,60 @@ export default function LoginSection() {
                       "ong@huellasesperanza.org",
                       "ong123",
                       "/ong",
-                      "Representante ONG"
+                      "ONG: Fundación Huellas de Esperanza"
                     )
                   }
-                  className="w-full p-4 rounded-2xl bg-brand-ice hover:bg-brand-cyan/20 text-brand-navy border border-brand-cyan/30 text-left transition-all flex items-center justify-between group cursor-pointer"
+                  className="w-full p-3.5 rounded-2xl bg-brand-ice hover:bg-brand-cyan/20 text-brand-navy border border-brand-cyan/30 text-left transition-all flex items-center justify-between group cursor-pointer"
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-brand-teal text-white flex items-center justify-center shrink-0">
-                      <Building2 className="w-6 h-6" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-brand-teal text-white flex items-center justify-center shrink-0">
+                      <Building2 className="w-5 h-5" />
                     </div>
                     <div>
                       <p className="font-extrabold text-sm font-display flex items-center gap-2">
-                        <span>2. Entrar como ONG Aliada</span>
+                        <span>2. ONG 1: Huellas de Esperanza (Caracas)</span>
                         <span className="px-2 py-0.5 text-[10px] rounded-full bg-brand-teal text-white font-extrabold">
-                          ROL ONG
+                          ONG #1
                         </span>
                       </p>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        ong@huellasesperanza.org | Clave: ong123 — Registra y da de baja mascotas
+                      <p className="text-xs text-slate-600">
+                        ong@huellasesperanza.org | Solo gestiona sus mascotas (Max, Milo, Simba)
                       </p>
                     </div>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-brand-teal group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 text-brand-teal group-hover:translate-x-1 transition-transform" />
+                </button>
+
+                {/* ONG 2 Quick Login */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuickDemoLogin(
+                      "ong@patitasunidas.org",
+                      "ong123",
+                      "/ong",
+                      "ONG: Refugio Patitas Unidas"
+                    )
+                  }
+                  className="w-full p-3.5 rounded-2xl bg-brand-ice hover:bg-brand-cyan/20 text-brand-navy border border-brand-cyan/30 text-left transition-all flex items-center justify-between group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-brand-cyan text-white flex items-center justify-center shrink-0">
+                      <Building2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-extrabold text-sm font-display flex items-center gap-2">
+                        <span>3. ONG 2: Refugio Patitas Unidas (Valencia)</span>
+                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-brand-cyan text-white font-extrabold">
+                          ONG #2
+                        </span>
+                      </p>
+                      <p className="text-xs text-slate-600">
+                        ong@patitasunidas.org | Solo gestiona sus mascotas (Toby, Canela)
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-brand-teal group-hover:translate-x-1 transition-transform" />
                 </button>
 
                 {/* Normal User Quick Login */}
@@ -202,25 +237,25 @@ export default function LoginSection() {
                       "Usuario Normal (Adoptante)"
                     )
                   }
-                  className="w-full p-4 rounded-2xl bg-brand-cream hover:bg-brand-amber/15 text-brand-navy border border-brand-amber/30 text-left transition-all flex items-center justify-between group cursor-pointer"
+                  className="w-full p-3.5 rounded-2xl bg-brand-cream hover:bg-brand-amber/15 text-brand-navy border border-brand-amber/30 text-left transition-all flex items-center justify-between group cursor-pointer"
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-brand-amber text-white flex items-center justify-center shrink-0">
-                      <User className="w-6 h-6" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-brand-amber text-white flex items-center justify-center shrink-0">
+                      <User className="w-5 h-5" />
                     </div>
                     <div>
                       <p className="font-extrabold text-sm font-display flex items-center gap-2">
-                        <span>3. Entrar como Usuario Normal (Adoptante)</span>
+                        <span>4. Usuario Normal (Adoptante)</span>
                         <span className="px-2 py-0.5 text-[10px] rounded-full bg-brand-amber text-white font-extrabold">
-                          ROL USUARIO
+                          USUARIO
                         </span>
                       </p>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        usuario@correo.com | Clave: user123 — Consulta catálogo y sus postulaciones
+                      <p className="text-xs text-slate-600">
+                        usuario@correo.com | Tiene su lista privada de favoritos y solicitudes
                       </p>
                     </div>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-brand-amberDark group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 text-brand-amberDark group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
             </div>
@@ -361,25 +396,51 @@ export default function LoginSection() {
                 </div>
 
                 {mode === "register" && (
-                  <div>
-                    <label
-                      htmlFor="auth-role"
-                      className="block text-xs font-bold text-brand-navy mb-1"
-                    >
-                      Tipo de Cuenta a Registrar
-                    </label>
-                    <select
-                      id="auth-role"
-                      name="role"
-                      value={formData.role}
-                      onChange={handleChange}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-brand-navy cursor-pointer"
-                    >
-                      <option value="user">Usuario Normal (Adoptante)</option>
-                      <option value="ong">Representante de ONG</option>
-                      <option value="admin">Administrador Supervisor</option>
-                    </select>
-                  </div>
+                  <>
+                    <div>
+                      <label
+                        htmlFor="auth-role"
+                        className="block text-xs font-bold text-brand-navy mb-1"
+                      >
+                        Tipo de Cuenta a Registrar
+                      </label>
+                      <select
+                        id="auth-role"
+                        name="role"
+                        value={formData.role}
+                        onChange={handleChange}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-brand-navy cursor-pointer"
+                      >
+                        <option value="user">Usuario Normal (Adoptante)</option>
+                        <option value="ong">Representante de ONG</option>
+                        <option value="admin">Administrador Supervisor</option>
+                      </select>
+                    </div>
+
+                    {formData.role === "ong" && (
+                      <div>
+                        <label
+                          htmlFor="auth-ongId"
+                          className="block text-xs font-bold text-brand-navy mb-1"
+                        >
+                          Selecciona la ONG a la que perteneces *
+                        </label>
+                        <select
+                          id="auth-ongId"
+                          name="ongId"
+                          value={formData.ongId}
+                          onChange={handleChange}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-brand-navy cursor-pointer"
+                        >
+                          {ongs.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.name} ({o.city})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <button

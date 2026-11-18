@@ -6,16 +6,35 @@ const initialData = {
       email: "admin@animaladvisor.org",
       password: "admin123",
       role: "admin",
+      ongId: null,
       title: "Supervisor Nacional Animal Advisor"
     },
     {
       id: "usr-ong-1",
-      name: "Coord. Huellas de Esperanza",
+      name: "Fundación Huellas de Esperanza",
       email: "ong@huellasesperanza.org",
       password: "ong123",
       role: "ong",
       ongId: "ong-1",
-      title: "Representante de ONG Verificada"
+      title: "ONG Verificada (Caracas)"
+    },
+    {
+      id: "usr-ong-2",
+      name: "Refugio Patitas Unidas",
+      email: "ong@patitasunidas.org",
+      password: "ong123",
+      role: "ong",
+      ongId: "ong-2",
+      title: "ONG Verificada (Valencia)"
+    },
+    {
+      id: "usr-ong-3",
+      name: "Santuario Bigotes y Colitas",
+      email: "ong@bigotesycolitas.org",
+      password: "ong123",
+      role: "ong",
+      ongId: "ong-3",
+      title: "ONG Verificada (Barquisimeto)"
     },
     {
       id: "usr-user-1",
@@ -23,6 +42,7 @@ const initialData = {
       email: "usuario@correo.com",
       password: "user123",
       role: "user",
+      ongId: null,
       title: "Adoptante Registrada"
     }
   ],

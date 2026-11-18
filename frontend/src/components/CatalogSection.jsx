@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   SlidersHorizontal,
@@ -11,19 +12,23 @@ import {
   RotateCcw,
   Eye,
   PawPrint,
-  PhoneCall
+  PhoneCall,
+  Lock
 } from "lucide-react";
 import { usePetFilters } from "../hooks/usePetFilters";
 import { useLocalStorageFavorites } from "../hooks/useLocalStorageFavorites";
 import { useNotificationToast } from "../hooks/useNotificationToast";
+import { useAuth } from "../hooks/useAuth";
 import { openAdoptionModal, openDetailModal } from "../store/slices/uiSlice";
 
 export default function CatalogSection() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const pets = useSelector((state) => state.pets.items);
   const loading = useSelector((state) => state.pets.loading);
   const ongs = useSelector((state) => state.ongs.items);
 
+  const { isAuthenticated, user } = useAuth();
   const { favoriteIds, toggleFavorite, isFavorite } = useLocalStorageFavorites();
   const { notify } = useNotificationToast();
 
@@ -35,16 +40,48 @@ export default function CatalogSection() {
     resetFilters
   } = usePetFilters(pets, favoriteIds);
 
+  // Si cierra sesión mientras tenía activo el filtro de favoritos, desactivarlo
+  useEffect(() => {
+    if (!isAuthenticated && filters.onlyFavorites) {
+      updateFilter("onlyFavorites", false);
+    }
+  }, [isAuthenticated, filters.onlyFavorites, updateFilter]);
+
   const handleFavoriteClick = (pet) => {
+    if (!isAuthenticated) {
+      notify({
+        title: "Inicio de sesión requerido",
+        message:
+          "Debes iniciar sesión (como Usuario, ONG o Admin) para guardar mascotas en tu lista personal de favoritos.",
+        type: "warning"
+      });
+      navigate("/login");
+      return;
+    }
+
     const alreadyFav = isFavorite(pet.id);
     toggleFavorite(pet.id);
     notify({
-      title: alreadyFav ? "Eliminado de favoritos" : "Guardado en favoritos",
+      title: alreadyFav ? "Eliminado de tus favoritos" : "Guardado en tus favoritos",
       message: alreadyFav
-        ? `${pet.name} fue retirado de tu lista de favoritos.`
-        : `${pet.name} se guardó en tu lista de favoritos.`,
+        ? `${pet.name} fue retirado de la lista de favoritos de ${user.name}.`
+        : `${pet.name} se guardó en la lista personal de favoritos de ${user.name}.`,
       type: alreadyFav ? "warning" : "success"
     });
+  };
+
+  const handleToggleOnlyFavorites = () => {
+    if (!isAuthenticated) {
+      notify({
+        title: "Inicia sesión para ver tus Favoritos",
+        message:
+          "La sección de favoritos es privada de cada cuenta. Inicia sesión para acceder a ella.",
+        type: "warning"
+      });
+      navigate("/login");
+      return;
+    }
+    updateFilter("onlyFavorites", !filters.onlyFavorites);
   };
 
   return (
@@ -68,19 +105,29 @@ export default function CatalogSection() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => updateFilter("onlyFavorites", !filters.onlyFavorites)}
+              onClick={handleToggleOnlyFavorites}
               className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold border transition-all duration-200 flex items-center gap-2 cursor-pointer ${
                 filters.onlyFavorites
                   ? "bg-brand-amber text-white border-brand-amber shadow-sm"
                   : "bg-white text-brand-navy border-brand-cyan/30 hover:bg-brand-cream"
               }`}
             >
-              <Heart
-                className={`w-4 h-4 ${
-                  filters.onlyFavorites ? "fill-white text-white" : "text-brand-amber"
-                }`}
-              />
-              <span>Solo Favoritos ({favoriteIds.length})</span>
+              {isAuthenticated ? (
+                <Heart
+                  className={`w-4 h-4 ${
+                    filters.onlyFavorites
+                      ? "fill-white text-white"
+                      : "text-brand-amber"
+                  }`}
+                />
+              ) : (
+                <Lock className="w-4 h-4 text-brand-amber" />
+              )}
+              <span>
+                {isAuthenticated
+                  ? `Mis Favoritos (${favoriteIds.length})`
+                  : "Favoritos (Iniciar Sesión)"}
+              </span>
             </button>
 
             {activeFiltersCount > 0 && (
@@ -320,10 +367,17 @@ export default function CatalogSection() {
                         )}
                       </div>
 
-                      {/* Favorite Button */}
+                      {/* Favorite Button (Requires Login, Isolated per User) */}
                       <button
                         type="button"
                         onClick={() => handleFavoriteClick(pet)}
+                        title={
+                          !isAuthenticated
+                            ? "Inicia sesión para guardar en favoritos"
+                            : fav
+                            ? `Quitar a ${pet.name} de tus favoritos`
+                            : `Guardar a ${pet.name} en tus favoritos`
+                        }
                         aria-label={
                           fav
                             ? `Quitar a ${pet.name} de favoritos`

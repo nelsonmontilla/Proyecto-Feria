@@ -38,8 +38,8 @@ export default function Navbar() {
       icon: PawPrint,
       badge: stats.availablePets
     },
-    ...(isAuthenticated && user?.role === "user"
-      ? [{ to: "/mi-cuenta", label: "Mis Solicitudes", icon: User }]
+    ...(isAuthenticated
+      ? [{ to: "/mi-cuenta", label: "Mis Favoritos y Solicitudes", icon: User }]
       : []),
     ...(isOng ? [{ to: "/ong", label: "Pestaña ONG", icon: Building2 }] : []),
     ...(isAdmin
@@ -59,6 +59,21 @@ export default function Navbar() {
     } else {
       const el = document.getElementById(sectionId);
       if (el) el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const handleFavoritesNavClick = () => {
+    setMobileMenuOpen(false);
+    if (!isAuthenticated) {
+      notify({
+        title: "Inicio de sesión requerido",
+        message:
+          "Inicia sesión (como Usuario, ONG o Admin) para acceder a tu lista personal de favoritos.",
+        type: "warning"
+      });
+      navigate("/login");
+    } else {
+      navigate("/mi-cuenta");
     }
   };
 
@@ -169,16 +184,23 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Right CTA: Favorites + Auth Role Controls */}
+          {/* Right CTA: Favorites (Requires Login) + Auth Role Controls */}
           <div className="hidden sm:flex items-center gap-2.5">
-            <NavLink
-              to="/catalogo"
+            <button
+              type="button"
+              onClick={handleFavoritesNavClick}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-cream border border-brand-amber/30 text-brand-navy text-xs font-bold hover:bg-brand-amber/15 transition-colors cursor-pointer"
-              title="Mascotas guardadas en favoritos"
+              title={
+                isAuthenticated
+                  ? `Favoritos de ${user.name}`
+                  : "Inicia sesión para ver tus favoritos"
+              }
             >
               <Heart className="w-4 h-4 text-brand-amber fill-brand-amber" />
-              <span>({favoritesCount})</span>
-            </NavLink>
+              <span>
+                {isAuthenticated ? `Mis Favoritos (${favoritesCount})` : "Favoritos"}
+              </span>
+            </button>
 
             {isAuthenticated ? (
               <div className="flex items-center gap-2">
@@ -187,7 +209,12 @@ export default function Navbar() {
                     {user.name}
                   </span>
                   <span className="block text-[10px] font-extrabold uppercase text-brand-teal">
-                    Rol: {user.role === "admin" ? "Administrador" : user.role === "ong" ? "ONG" : "Usuario"}
+                    Rol:{" "}
+                    {user.role === "admin"
+                      ? "Administrador"
+                      : user.role === "ong"
+                      ? "ONG"
+                      : "Usuario"}
                   </span>
                 </div>
                 <button
@@ -261,6 +288,19 @@ export default function Navbar() {
           })}
 
           <div className="pt-2 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handleFavoritesNavClick}
+              className="w-full py-2.5 rounded-xl bg-brand-cream text-brand-navy font-bold text-center text-sm border border-brand-amber/30 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Heart className="w-4 h-4 text-brand-amber fill-brand-amber" />
+              <span>
+                {isAuthenticated
+                  ? `Mis Favoritos (${favoritesCount})`
+                  : "Favoritos (Requiere Login)"}
+              </span>
+            </button>
+
             {isAuthenticated ? (
               <button
                 type="button"

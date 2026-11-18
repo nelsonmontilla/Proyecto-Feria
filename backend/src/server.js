@@ -121,7 +121,12 @@ app.post("/api/auth/login", (req, res) => {
   };
 
   const token = Buffer.from(
-    JSON.stringify({ id: safeUser.id, role: safeUser.role, iat: Date.now() })
+    JSON.stringify({
+      id: safeUser.id,
+      role: safeUser.role,
+      ongId: safeUser.ongId,
+      iat: Date.now()
+    })
   ).toString("base64");
 
   res.json({
@@ -182,7 +187,12 @@ app.post("/api/auth/register", (req, res) => {
   };
 
   const token = Buffer.from(
-    JSON.stringify({ id: safeUser.id, role: safeUser.role, iat: Date.now() })
+    JSON.stringify({
+      id: safeUser.id,
+      role: safeUser.role,
+      ongId: safeUser.ongId,
+      iat: Date.now()
+    })
   ).toString("base64");
 
   res.status(201).json({
@@ -227,10 +237,10 @@ app.get("/api/stats", (req, res) => {
   });
 });
 
-// ==========================================
+// ====================================================
 // ENTIDAD 1: MASCOTAS (PETS) - CRUD COMPLETO
-// Lectura pública; escritura protegida para ONG y Admin
-// ==========================================
+// Cada ONG solo puede crear, editar o borrar sus propias mascotas
+// ====================================================
 app.get("/api/pets", (req, res) => {
   const db = readDb();
   res.json(db.pets);
@@ -265,13 +275,17 @@ app.post("/api/pets", requireRole(["ong", "admin"]), (req, res) => {
     image
   } = req.body;
 
-  if (!name || !species || !ongId) {
+  // Si es rol ONG, forzar estrictamente el ongId de la ONG autenticada
+  const targetOngId =
+    req.user.role === "ong" && req.user.ongId ? req.user.ongId : ongId;
+
+  if (!name || !species || !targetOngId) {
     return res
       .status(400)
       .json({ message: "Nombre, especie y ONG son obligatorios" });
   }
 
-  const ong = db.ongs.find((o) => o.id === ongId);
+  const ong = db.ongs.find((o) => o.id === targetOngId);
   const newPet = {
     id: `pet-${Date.now()}`,
     name: name.trim(),
@@ -282,7 +296,7 @@ app.post("/api/pets", requireRole(["ong", "admin"]), (req, res) => {
     gender: gender || "Macho",
     size: size || "Mediano",
     weight: weight || "10 kg",
-    ongId,
+    ongId: targetOngId,
     ongName: ong ? ong.name : "Refugio Aliado",
     city: city || (ong ? ong.city : "Caracas"),
     vaccinated: Boolean(vaccinated),
@@ -313,14 +327,30 @@ app.put("/api/pets/:id", requireRole(["ong", "admin"]), (req, res) => {
     return res.status(404).json({ message: "Mascota no encontrada" });
   }
 
-  const ong = req.body.ongId
-    ? db.ongs.find((o) => o.id === req.body.ongId)
-    : null;
+  // Verificar independencia de ONG: una ONG no puede editar mascotas de otra ONG
+  if (
+    req.user.role === "ong" &&
+    req.user.ongId &&
+    db.pets[index].ongId !== req.user.ongId
+  ) {
+    return res.status(403).json({
+      message:
+        "Acción denegada: Solo puedes editar mascotas registradas por tu propia ONG."
+    });
+  }
+
+  const targetOngId =
+    req.user.role === "ong" && req.user.ongId
+      ? req.user.ongId
+      : req.body.ongId || db.pets[index].ongId;
+
+  const ong = db.ongs.find((o) => o.id === targetOngId);
 
   const updatedPet = {
     ...db.pets[index],
     ...req.body,
     id: db.pets[index].id,
+    ongId: targetOngId,
     ongName: ong ? ong.name : req.body.ongName || db.pets[index].ongName
   };
 
@@ -335,6 +365,18 @@ app.patch("/api/pets/:id/status", requireRole(["ong", "admin"]), (req, res) => {
   if (index === -1) {
     return res.status(404).json({ message: "Mascota no encontrada" });
   }
+
+  if (
+    req.user.role === "ong" &&
+    req.user.ongId &&
+    db.pets[index].ongId !== req.user.ongId
+  ) {
+    return res.status(403).json({
+      message:
+        "Acción denegada: Solo puedes cambiar el estado de las mascotas de tu propia ONG."
+    });
+  }
+
   const { status } = req.body;
   db.pets[index].status = status;
   writeDb(db);
@@ -343,10 +385,22 @@ app.patch("/api/pets/:id/status", requireRole(["ong", "admin"]), (req, res) => {
 
 app.delete("/api/pets/:id", requireRole(["ong", "admin"]), (req, res) => {
   const db = readDb();
-  const exists = db.pets.some((p) => p.id === req.params.id);
-  if (!exists) {
+  const pet = db.pets.find((p) => p.id === req.params.id);
+  if (!pet) {
     return res.status(404).json({ message: "Mascota no encontrada" });
   }
+
+  if (
+    req.user.role === "ong" &&
+    req.user.ongId &&
+    pet.ongId !== req.user.ongId
+  ) {
+    return res.status(403).json({
+      message:
+        "Acción denegada: Solo puedes dar de baja o eliminar mascotas pertenecientes a tu propia ONG."
+    });
+  }
+
   db.pets = db.pets.filter((p) => p.id !== req.params.id);
   writeDb(db);
   res.json({ id: req.params.id, message: "Mascota eliminada correctamente" });
@@ -354,7 +408,6 @@ app.delete("/api/pets/:id", requireRole(["ong", "admin"]), (req, res) => {
 
 // ==========================================
 // ENTIDAD 2: ONGS / REFUGIOS - CRUD COMPLETO
-// Lectura pública; escritura protegida para Administrador
 // ==========================================
 app.get("/api/ongs", (req, res) => {
   const db = readDb();
@@ -459,7 +512,6 @@ app.delete("/api/ongs/:id", requireRole(["admin"]), (req, res) => {
 
 // ===========================================================
 // ENTIDAD 3: HISTORIAL Y SOLICITUDES DE ADOPCIÓN - CRUD COMPLETO
-// Creación abierta para adoptantes; edición/eliminación protegida para Admin/ONG
 // ===========================================================
 app.get("/api/adoptions", (req, res) => {
   const db = readDb();

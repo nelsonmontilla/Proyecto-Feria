@@ -1,50 +1,76 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSelector } from "react-redux";
 
-const STORAGE_KEY = "animal_advisor_favorites";
+const BASE_STORAGE_KEY = "animal_advisor_favorites_user_";
 
 /**
  * Custom Hook #4: useLocalStorageFavorites
- * Permite a los adoptantes guardar y gestionar sus mascotas favoritas
- * con persistencia en localStorage.
+ * Requiere sesión iniciada y aisla la lista de favoritos de forma exclusiva
+ * para cada usuario autenticado (según su user.id).
  */
 export function useLocalStorageFavorites() {
-  const [favoriteIds, setFavoriteIds] = useState(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const user = useSelector((state) => state.auth.user);
+  const userStorageKey = user?.id ? `${BASE_STORAGE_KEY}${user.id}` : null;
 
+  const [favoriteIds, setFavoriteIds] = useState([]);
+
+  // Cargar los favoritos propios del usuario que inició sesión
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(favoriteIds));
-    } catch (err) {
-      console.error("Error guardando favoritos en localStorage:", err);
+    if (!userStorageKey) {
+      setFavoriteIds([]);
+      return;
     }
-  }, [favoriteIds]);
+    try {
+      const saved = window.localStorage.getItem(userStorageKey);
+      setFavoriteIds(saved ? JSON.parse(saved) : []);
+    } catch {
+      setFavoriteIds([]);
+    }
+  }, [userStorageKey]);
 
-  const toggleFavorite = useCallback((petId) => {
-    setFavoriteIds((prev) =>
-      prev.includes(petId) ? prev.filter((id) => id !== petId) : [...prev, petId]
-    );
-  }, []);
+  const toggleFavorite = useCallback(
+    (petId) => {
+      if (!userStorageKey) return false;
+      setFavoriteIds((prev) => {
+        const next = prev.includes(petId)
+          ? prev.filter((id) => id !== petId)
+          : [...prev, petId];
+        try {
+          window.localStorage.setItem(userStorageKey, JSON.stringify(next));
+        } catch (err) {
+          console.error("Error guardando favoritos del usuario:", err);
+        }
+        return next;
+      });
+      return true;
+    },
+    [userStorageKey]
+  );
 
   const isFavorite = useCallback(
-    (petId) => favoriteIds.includes(petId),
-    [favoriteIds]
+    (petId) => {
+      if (!userStorageKey) return false;
+      return favoriteIds.includes(petId);
+    },
+    [favoriteIds, userStorageKey]
   );
 
   const clearFavorites = useCallback(() => {
+    if (!userStorageKey) return;
     setFavoriteIds([]);
-  }, []);
+    try {
+      window.localStorage.removeItem(userStorageKey);
+    } catch (err) {
+      console.error("Error limpiando favoritos:", err);
+    }
+  }, [userStorageKey]);
 
   return {
-    favoriteIds,
-    favoritesCount: favoriteIds.length,
+    favoriteIds: userStorageKey ? favoriteIds : [],
+    favoritesCount: userStorageKey ? favoriteIds.length : 0,
     toggleFavorite,
     isFavorite,
-    clearFavorites
+    clearFavorites,
+    canUseFavorites: Boolean(userStorageKey)
   };
 }

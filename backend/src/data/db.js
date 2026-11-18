@@ -38,7 +38,6 @@ async function connectMongoAtlas(customUri) {
     mongoConnectionError = null;
     console.log("✅ Conectado exitosamente a MongoDB Atlas");
 
-    // Auto-seed MongoDB Atlas if collections are empty
     await seedMongoIfNeeded();
 
     return {
@@ -100,9 +99,16 @@ function readDb() {
     const raw = fs.readFileSync(DB_FILE, "utf-8");
     const parsed = JSON.parse(raw);
 
-    // Ensure users collection exists if database.json was created previously
-    if (!parsed.users || parsed.users.length === 0) {
-      parsed.users = initialData.users;
+    // Ensure all initial seed users exist (including multiple ONG accounts)
+    if (!parsed.users) parsed.users = [];
+    let updatedUsers = false;
+    for (const seedUser of initialData.users) {
+      if (!parsed.users.some((u) => u.email === seedUser.email)) {
+        parsed.users.push(seedUser);
+        updatedUsers = true;
+      }
+    }
+    if (updatedUsers) {
       fs.writeFileSync(DB_FILE, JSON.stringify(parsed, null, 2), "utf-8");
     }
     return parsed;
@@ -160,7 +166,9 @@ function resetDb() {
 function getDbStatus() {
   return {
     isMongoConnected,
-    mode: isMongoConnected ? "MongoDB Atlas (Cloud)" : "JSON Local + Ready for MongoDB Atlas",
+    mode: isMongoConnected
+      ? "MongoDB Atlas (Cloud)"
+      : "JSON Local + Ready for MongoDB Atlas",
     hasUriConfigured: Boolean(
       process.env.MONGODB_URI && process.env.MONGODB_URI.trim()
     ),
