@@ -88,7 +88,7 @@ app.post("/api/db-connect", requireRole(["admin"]), async (req, res) => {
 });
 
 // ===========================================================
-// AUTENTICACIÓN Y SEPARACIÓN DE ROLES (LOGIN / REGISTRO)
+// AUTENTICACIÓN Y SEPARACIÓN DE ROLES (LOGIN / REGISTRO PÚBLICO)
 // ===========================================================
 app.post("/api/auth/login", (req, res) => {
   const db = readDb();
@@ -136,9 +136,11 @@ app.post("/api/auth/login", (req, res) => {
   });
 });
 
+// El registro público SOLO permite registrar Usuarios Normales (Adoptantes).
+// Las nuevas ONGs solo pueden ser registradas por el Administrador en POST /api/ongs.
 app.post("/api/auth/register", (req, res) => {
   const db = readDb();
-  const { name, email, password, role, ongId } = req.body;
+  const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
     return res
@@ -157,20 +159,14 @@ app.post("/api/auth/register", (req, res) => {
       .json({ message: "Este correo electrónico ya se encuentra registrado" });
   }
 
-  const validRole = ["user", "ong", "admin"].includes(role) ? role : "user";
   const newUser = {
     id: `usr-${Date.now()}`,
     name: name.trim(),
     email: normalizedEmail,
     password,
-    role: validRole,
-    ongId: validRole === "ong" ? ongId || "ong-1" : null,
-    title:
-      validRole === "admin"
-        ? "Administrador del Sistema"
-        : validRole === "ong"
-        ? "Representante ONG"
-        : "Usuario Adoptante"
+    role: "user", // Siempre 'user' en el registro público
+    ongId: null,
+    title: "Usuario Adoptante"
   };
 
   if (!db.users) db.users = [];
@@ -182,7 +178,7 @@ app.post("/api/auth/register", (req, res) => {
     name: newUser.name,
     email: newUser.email,
     role: newUser.role,
-    ongId: newUser.ongId,
+    ongId: null,
     title: newUser.title
   };
 
@@ -190,7 +186,7 @@ app.post("/api/auth/register", (req, res) => {
     JSON.stringify({
       id: safeUser.id,
       role: safeUser.role,
-      ongId: safeUser.ongId,
+      ongId: null,
       iat: Date.now()
     })
   ).toString("base64");
@@ -198,7 +194,7 @@ app.post("/api/auth/register", (req, res) => {
   res.status(201).json({
     user: safeUser,
     token,
-    message: "Cuenta creada exitosamente"
+    message: "Cuenta de adoptante creada exitosamente"
   });
 });
 
@@ -275,7 +271,6 @@ app.post("/api/pets", requireRole(["ong", "admin"]), (req, res) => {
     image
   } = req.body;
 
-  // Si es rol ONG, forzar estrictamente el ongId de la ONG autenticada
   const targetOngId =
     req.user.role === "ong" && req.user.ongId ? req.user.ongId : ongId;
 
@@ -327,7 +322,6 @@ app.put("/api/pets/:id", requireRole(["ong", "admin"]), (req, res) => {
     return res.status(404).json({ message: "Mascota no encontrada" });
   }
 
-  // Verificar independencia de ONG: una ONG no puede editar mascotas de otra ONG
   if (
     req.user.role === "ong" &&
     req.user.ongId &&
@@ -406,9 +400,10 @@ app.delete("/api/pets/:id", requireRole(["ong", "admin"]), (req, res) => {
   res.json({ id: req.params.id, message: "Mascota eliminada correctamente" });
 });
 
-// ==========================================
+// ================================================================
 // ENTIDAD 2: ONGS / REFUGIOS - CRUD COMPLETO
-// ==========================================
+// SOLO EL ADMINISTRADOR PUEDE REGISTRAR, EDITAR O ELIMINAR ONGs
+// ================================================================
 app.get("/api/ongs", (req, res) => {
   const db = readDb();
   res.json(db.ongs);
@@ -430,6 +425,7 @@ app.post("/api/ongs", requireRole(["admin"]), (req, res) => {
     address,
     phone,
     email,
+    password,
     website,
     capacity,
     currentOccupancy,
@@ -445,14 +441,17 @@ app.post("/api/ongs", requireRole(["admin"]), (req, res) => {
       .json({ message: "Nombre, ciudad y correo electrónico son obligatorios" });
   }
 
+  const normalizedEmail = email.trim().toLowerCase();
+  const newOngId = `ong-${Date.now()}`;
+
   const newOng = {
-    id: `ong-${Date.now()}`,
+    id: newOngId,
     name: name.trim(),
     ruc: ruc || "J-00000000-0",
     city: city.trim(),
     address: address || "Dirección por confirmar",
     phone: phone || "+58 412-000-0000",
-    email: email.trim(),
+    email: normalizedEmail,
     website: website || "https://animaladvisor.org",
     capacity: Number(capacity) || 30,
     currentOccupancy: Number(currentOccupancy) || 15,
@@ -465,6 +464,28 @@ app.post("/api/ongs", requireRole(["admin"]), (req, res) => {
   };
 
   db.ongs.unshift(newOng);
+
+  // Crear también la cuenta de usuario de acceso para esta ONG registrada por el Admin
+  if (!db.users) db.users = [];
+  const existingUserIdx = db.users.findIndex(
+    (u) => u.email.toLowerCase() === normalizedEmail
+  );
+  const ongAccount = {
+    id: `usr-${newOngId}`,
+    name: newOng.name,
+    email: normalizedEmail,
+    password: password && password.trim() ? password.trim() : "ong123",
+    role: "ong",
+    ongId: newOngId,
+    title: `ONG Verificada (${newOng.city})`
+  };
+
+  if (existingUserIdx !== -1) {
+    db.users[existingUserIdx] = ongAccount;
+  } else {
+    db.users.push(ongAccount);
+  }
+
   writeDb(db);
   res.status(201).json(newOng);
 });
@@ -476,9 +497,11 @@ app.put("/api/ongs/:id", requireRole(["admin"]), (req, res) => {
     return res.status(404).json({ message: "ONG no encontrada" });
   }
 
+  const { password, ...restBody } = req.body;
+
   const updatedOng = {
     ...db.ongs[index],
-    ...req.body,
+    ...restBody,
     id: db.ongs[index].id,
     capacity: Number(req.body.capacity ?? db.ongs[index].capacity),
     currentOccupancy: Number(
@@ -487,6 +510,18 @@ app.put("/api/ongs/:id", requireRole(["admin"]), (req, res) => {
   };
 
   db.ongs[index] = updatedOng;
+
+  // Sincronizar también la cuenta de usuario asociada a esta ONG
+  if (db.users) {
+    const userIdx = db.users.findIndex((u) => u.ongId === updatedOng.id);
+    if (userIdx !== -1) {
+      db.users[userIdx].name = updatedOng.name;
+      db.users[userIdx].email = updatedOng.email.toLowerCase();
+      if (password && password.trim()) {
+        db.users[userIdx].password = password.trim();
+      }
+    }
+  }
 
   db.pets = db.pets.map((p) =>
     p.ongId === updatedOng.id ? { ...p, ongName: updatedOng.name } : p
@@ -506,6 +541,9 @@ app.delete("/api/ongs/:id", requireRole(["admin"]), (req, res) => {
     return res.status(404).json({ message: "ONG no encontrada" });
   }
   db.ongs = db.ongs.filter((o) => o.id !== req.params.id);
+  if (db.users) {
+    db.users = db.users.filter((u) => u.ongId !== req.params.id);
+  }
   writeDb(db);
   res.json({ id: req.params.id, message: "ONG eliminada correctamente" });
 });

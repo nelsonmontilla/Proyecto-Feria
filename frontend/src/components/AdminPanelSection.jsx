@@ -40,6 +40,7 @@ const INITIAL_ONG_FORM = {
   address: "",
   phone: "",
   email: "",
+  password: "",
   capacity: 40,
   currentOccupancy: 25,
   status: "Activa",
@@ -143,6 +144,7 @@ export default function AdminPanelSection() {
       address: ong.address || "",
       phone: ong.phone || "",
       email: ong.email || "",
+      password: "",
       capacity: ong.capacity ?? 40,
       currentOccupancy: ong.currentOccupancy ?? 20,
       status: ong.status || "Activa",
@@ -163,14 +165,14 @@ export default function AdminPanelSection() {
         ).unwrap();
         notify({
           title: "ONG actualizada",
-          message: `Se actualizaron los datos de ${ongForm.values.name}.`,
+          message: `Se actualizaron los datos y credenciales de ${ongForm.values.name}.`,
           type: "success"
         });
       } else {
         await dispatch(createOng(ongForm.values)).unwrap();
         notify({
-          title: "Nueva ONG registrada",
-          message: `${ongForm.values.name} fue incorporada a la red Animal Advisor.`,
+          title: "Nueva ONG y cuenta de acceso creadas",
+          message: `${ongForm.values.name} ya puede iniciar sesión en /login con el correo ${ongForm.values.email}.`,
           type: "success"
         });
       }
@@ -217,7 +219,7 @@ export default function AdminPanelSection() {
       }
       notify({
         title: "ONG eliminada",
-        message: `${ong.name} fue eliminada del directorio nacional.`,
+        message: `${ong.name} y su cuenta asociada fueron eliminadas del sistema.`,
         type: "warning"
       });
     } catch (err) {
@@ -360,11 +362,10 @@ export default function AdminPanelSection() {
               Supervisión de ONGs y Control del Historial de Adopciones
             </h2>
             <p className="mt-1.5 text-slate-600 text-base max-w-3xl">
-              Panel exclusivo separado por login para auditar refugios, controlar niveles de saturación, administrar registros del historial y conectar con MongoDB Atlas.
+              Solo el Administrador puede dar de alta nuevas ONGs (asignándoles su correo y contraseña de acceso), auditar la saturación de los albergues y controlar el historial de adopciones.
             </p>
           </div>
 
-          {/* Sub-navigation Tabs on its own clean row so nothing collides */}
           <div className="flex flex-wrap items-center gap-2.5 bg-white p-2 rounded-2xl border border-brand-cyan/30 shadow-sm w-fit">
             <button
               type="button"
@@ -376,7 +377,7 @@ export default function AdminPanelSection() {
               }`}
             >
               <Building2 className="w-4 h-4 shrink-0" />
-              <span>Supervisar ONGs ({ongs.length})</span>
+              <span>Supervisar y Registrar ONGs ({ongs.length})</span>
             </button>
 
             <button
@@ -421,7 +422,7 @@ export default function AdminPanelSection() {
         </div>
 
         {/* =============================================================== */}
-        {/* TAB 1: SUPERVISIÓN Y CRUD DE ONGs (FORMULARIO + TABLA)          */}
+        {/* TAB 1: SUPERVISIÓN Y REGISTRO EXCLUSIVO DE ONGs                 */}
         {/* =============================================================== */}
         {activeAdminTab === "ongs" && (
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
@@ -431,10 +432,10 @@ export default function AdminPanelSection() {
                   <h3 className="text-lg font-extrabold text-brand-navy font-display">
                     {editingOngId
                       ? "Editar / Auditar ONG"
-                      : "Registrar Nueva ONG (Entidad #2)"}
+                      : "Dar de Alta Nueva ONG (Exclusivo Admin)"}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Control de capacidad, verificación y estatus
+                    Crea la ONG y su cuenta de inicio de sesión para `/ong`
                   </p>
                 </div>
                 {editingOngId && (
@@ -524,7 +525,7 @@ export default function AdminPanelSection() {
                       htmlFor="ong-email"
                       className="block text-xs font-bold text-brand-navy mb-1"
                     >
-                      Correo Institucional *
+                      Correo de Login ONG *
                     </label>
                     <input
                       id="ong-email"
@@ -543,6 +544,26 @@ export default function AdminPanelSection() {
                   </div>
                   <div>
                     <label
+                      htmlFor="ong-password"
+                      className="block text-xs font-bold text-brand-navy mb-1"
+                    >
+                      Contraseña Acceso ONG
+                    </label>
+                    <input
+                      id="ong-password"
+                      name="password"
+                      type="text"
+                      value={ongForm.values.password}
+                      onChange={ongForm.handleChange}
+                      placeholder="Por defecto: ong123"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label
                       htmlFor="ong-phone"
                       className="block text-xs font-bold text-brand-navy mb-1"
                     >
@@ -558,24 +579,23 @@ export default function AdminPanelSection() {
                       className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="ong-address"
-                    className="block text-xs font-bold text-brand-navy mb-1"
-                  >
-                    Dirección Física
-                  </label>
-                  <input
-                    id="ong-address"
-                    name="address"
-                    type="text"
-                    value={ongForm.values.address}
-                    onChange={ongForm.handleChange}
-                    placeholder="Av. Principal, Edificio..."
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm"
-                  />
+                  <div>
+                    <label
+                      htmlFor="ong-address"
+                      className="block text-xs font-bold text-brand-navy mb-1"
+                    >
+                      Dirección Física
+                    </label>
+                    <input
+                      id="ong-address"
+                      name="address"
+                      type="text"
+                      value={ongForm.values.address}
+                      onChange={ongForm.handleChange}
+                      placeholder="Av. Principal..."
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
@@ -676,7 +696,7 @@ export default function AdminPanelSection() {
                   ) : (
                     <>
                       <PlusCircle className="w-4 h-4 text-brand-mint" />
-                      <span>Registrar Nueva ONG en Sistema</span>
+                      <span>Registrar Nueva ONG y Crear Acceso</span>
                     </>
                   )}
                 </button>
@@ -699,7 +719,7 @@ export default function AdminPanelSection() {
                   <thead>
                     <tr className="bg-brand-ice text-brand-navy text-xs font-extrabold uppercase tracking-wider border-b border-brand-cyan/20">
                       <th className="py-3.5 px-4 whitespace-nowrap">Organización</th>
-                      <th className="py-3.5 px-4 whitespace-nowrap">Ciudad / Contacto</th>
+                      <th className="py-3.5 px-4 whitespace-nowrap">Ciudad / Login ONG</th>
                       <th className="py-3.5 px-4 whitespace-nowrap">Capacidad</th>
                       <th className="py-3.5 px-4 whitespace-nowrap">Auditoría</th>
                       <th className="py-3.5 px-4 text-right whitespace-nowrap">Acciones Admin</th>

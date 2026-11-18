@@ -42,11 +42,11 @@ Documento de verificación técnica y funcional del proyecto **Animal Advisor �
 
 ### [x] Formularios para manejar las entidades
 - [x] **Formulario 1 — Registro y Edición de Mascotas (ONG)**: En `frontend/src/components/OngPortalSection.jsx` (con `ongId` bloqueado a la ONG que inició sesión).
-- [x] **Formulario 2 — Registro y Auditoría de ONGs (Admin)**: En `frontend/src/components/AdminPanelSection.jsx` (Pestaña *Supervisar ONGs*).
+- [x] **Formulario 2 — Registro Exclusivo y Auditoría de ONGs (Admin)**: En `frontend/src/components/AdminPanelSection.jsx` (Pestaña *Supervisar y Registrar ONGs* — único lugar donde se dan de alta nuevas ONGs y su contraseña de acceso).
 - [x] **Formulario 3 — Control del Historial de Adopciones (Admin)**: En `frontend/src/components/AdminPanelSection.jsx` (Pestaña *Historial de Adopciones*).
 - [x] **Formulario 4 — Postulación de Adopción (Adoptante)**: En `frontend/src/components/PetModals.jsx`.
 - [x] **Formulario 5 — Consulta de Contacto y Asesoría**: En `frontend/src/components/ContactSection.jsx`.
-- [x] **Formulario 6 — Login y Registro de Usuarios por Rol y ONG**: En `frontend/src/components/LoginSection.jsx`.
+- [x] **Formulario 6 — Login General y Registro Público Exclusivo de Adoptantes**: En `frontend/src/components/LoginSection.jsx` (el registro público solo permite crear cuentas de adoptante `role: "user"`).
 
 ---
 

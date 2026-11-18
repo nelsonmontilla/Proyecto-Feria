@@ -42,7 +42,9 @@ Este documento resume todos los módulos construidos, los últimos ajustes imple
 - **Capa 2 — Protección en el Backend (`requireRole` Middleware en `backend/src/server.js`)**:
   - Cada petición de creación, edición o borrado desde Redux envía el encabezado `Authorization: Bearer <token>`.
   - El middleware `requireRole` valida en el servidor que el token pertenezca al rol autorizado antes de modificar la base de datos.
-- **Independencia Total entre ONGs en el CRUD de Mascotas**:
+- **Independencia Total entre ONGs y Alta Exclusiva por el Administrador**:
+  - En el formulario de registro público (`/login`) **solo se pueden registrar Usuarios Adoptantes (`role: "user"`)**; no es posible auto-registrarse como Administrador ni como ONG.
+  - **Solo el Administrador** puede registrar nuevas ONGs desde su Panel (`/admin` -> *Dar de Alta Nueva ONG*), asignándoles su correo y contraseña de acceso. Al registrarla, el backend crea tanto la ficha de la ONG como su cuenta de inicio de sesión (`role: "ong"`).
   - Cada cuenta de rol `ong` está vinculada a su `ongId` (por ejemplo, `ong-1` para *Fundación Huellas de Esperanza* y `ong-2` para *Refugio Patitas Unidas*).
   - Cuando una ONG inicia sesión y entra a `/ong`, **la tabla solo muestra las mascotas de esa ONG** y **el formulario bloquea con candado el campo ONG** para que solo pueda agregar, editar o dar de baja mascotas propias, nunca las de otra fundación.
 - **Favoritos Privados por Usuario con Login Obligatorio**:

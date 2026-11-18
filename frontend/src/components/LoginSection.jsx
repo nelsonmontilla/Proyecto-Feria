@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
 import {
   ShieldCheck,
   Building2,
@@ -11,14 +10,14 @@ import {
   KeyRound,
   UserPlus,
   CheckCircle2,
-  Database
+  Database,
+  Info
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useNotificationToast } from "../hooks/useNotificationToast";
 
 export default function LoginSection() {
   const navigate = useNavigate();
-  const ongs = useSelector((state) => state.ongs.items);
   const { login, register, loading, error, resetError, dbStatus } = useAuth();
   const { notify } = useNotificationToast();
 
@@ -26,9 +25,7 @@ export default function LoginSection() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    password: "",
-    role: "user",
-    ongId: "ong-1"
+    password: ""
   });
 
   const handleChange = (e) => {
@@ -76,19 +73,18 @@ export default function LoginSection() {
           navigate("/mi-cuenta");
         }
       } else {
-        const res = await register(formData);
+        // El registro público crea únicamente cuentas de Usuario Normal (Adoptante)
+        const res = await register({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password
+        });
         notify({
-          title: "Cuenta registrada con éxito",
+          title: "Cuenta de adoptante registrada",
           message: `Bienvenido(a), ${res.user.name}.`,
           type: "success"
         });
-        if (res.user.role === "admin") {
-          navigate("/admin");
-        } else if (res.user.role === "ong") {
-          navigate("/ong");
-        } else {
-          navigate("/mi-cuenta");
-        }
+        navigate("/mi-cuenta");
       }
     } catch (err) {
       notify({
@@ -115,7 +111,7 @@ export default function LoginSection() {
             </h1>
 
             <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-              Cada usuario cuenta con su propia lista privada de <strong>Favoritos</strong>, y cada <strong>ONG</strong> visualiza y administra únicamente sus propias mascotas registradas.
+              Los nuevos adoptantes pueden registrarse libremente. Las cuentas de <strong>ONGs aliadas</strong> son dadas de alta exclusivamente por el <strong>Administrador</strong> desde su panel de supervisión.
             </p>
 
             {/* Quick 1-Click Role Switcher Cards for Evaluation */}
@@ -155,7 +151,7 @@ export default function LoginSection() {
                         </span>
                       </p>
                       <p className="text-xs text-white/80">
-                        admin@animaladvisor.org | Supervisa todas las ONGs e Historial
+                        admin@animaladvisor.org | Único habilitado para registrar nuevas ONGs
                       </p>
                     </div>
                   </div>
@@ -286,7 +282,7 @@ export default function LoginSection() {
                     <h2 className="text-xl font-extrabold text-brand-navy font-display">
                       {mode === "login"
                         ? "Iniciar Sesión"
-                        : "Crear Cuenta de Usuario"}
+                        : "Registro de Adoptante"}
                     </h2>
                     <p className="text-xs text-brand-slate">
                       Animal Advisor — Guide to Pet Adoption
@@ -328,27 +324,39 @@ export default function LoginSection() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {mode === "register" && (
-                  <div>
-                    <label
-                      htmlFor="auth-name"
-                      className="block text-xs font-bold text-brand-navy mb-1"
-                    >
-                      Nombre Completo *
-                    </label>
-                    <div className="relative">
-                      <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        id="auth-name"
-                        name="name"
-                        type="text"
-                        required
-                        value={formData.name}
-                        onChange={handleChange}
-                        placeholder="Ej. Carlos Mendoza"
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-cyan"
-                      />
+                  <>
+                    <div className="p-3.5 rounded-2xl bg-brand-ice border border-brand-cyan/30 flex items-start gap-2.5 text-xs text-brand-navy">
+                      <Info className="w-4 h-4 text-brand-teal shrink-0 mt-0.5" />
+                      <span>
+                        Este formulario registra cuentas de{" "}
+                        <strong>Usuario Adoptante</strong>. El alta de nuevas{" "}
+                        <strong>ONGs</strong> es realizada exclusivamente por el{" "}
+                        <strong>Administrador</strong> en su panel de supervisión.
+                      </span>
                     </div>
-                  </div>
+
+                    <div>
+                      <label
+                        htmlFor="auth-name"
+                        className="block text-xs font-bold text-brand-navy mb-1"
+                      >
+                        Nombre Completo del Adoptante *
+                      </label>
+                      <div className="relative">
+                        <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          id="auth-name"
+                          name="name"
+                          type="text"
+                          required
+                          value={formData.name}
+                          onChange={handleChange}
+                          placeholder="Ej. Carlos Mendoza"
+                          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-cyan"
+                        />
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 <div>
@@ -367,7 +375,11 @@ export default function LoginSection() {
                       required
                       value={formData.email}
                       onChange={handleChange}
-                      placeholder="admin@animaladvisor.org o usuario@correo.com"
+                      placeholder={
+                        mode === "login"
+                          ? "admin@animaladvisor.org, ong@... o usuario@..."
+                          : "tu@correo.com"
+                      }
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-cyan"
                     />
                   </div>
@@ -395,54 +407,6 @@ export default function LoginSection() {
                   </div>
                 </div>
 
-                {mode === "register" && (
-                  <>
-                    <div>
-                      <label
-                        htmlFor="auth-role"
-                        className="block text-xs font-bold text-brand-navy mb-1"
-                      >
-                        Tipo de Cuenta a Registrar
-                      </label>
-                      <select
-                        id="auth-role"
-                        name="role"
-                        value={formData.role}
-                        onChange={handleChange}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-brand-navy cursor-pointer"
-                      >
-                        <option value="user">Usuario Normal (Adoptante)</option>
-                        <option value="ong">Representante de ONG</option>
-                        <option value="admin">Administrador Supervisor</option>
-                      </select>
-                    </div>
-
-                    {formData.role === "ong" && (
-                      <div>
-                        <label
-                          htmlFor="auth-ongId"
-                          className="block text-xs font-bold text-brand-navy mb-1"
-                        >
-                          Selecciona la ONG a la que perteneces *
-                        </label>
-                        <select
-                          id="auth-ongId"
-                          name="ongId"
-                          value={formData.ongId}
-                          onChange={handleChange}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-brand-navy cursor-pointer"
-                        >
-                          {ongs.map((o) => (
-                            <option key={o.id} value={o.id}>
-                              {o.name} ({o.city})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </>
-                )}
-
                 <button
                   type="submit"
                   disabled={loading}
@@ -459,7 +423,9 @@ export default function LoginSection() {
                     <>
                       <UserPlus className="w-4 h-4" />
                       <span>
-                        {loading ? "Registrando..." : "Crear Cuenta Ahora"}
+                        {loading
+                          ? "Registrando..."
+                          : "Crear Cuenta de Adoptante"}
                       </span>
                     </>
                   )}
@@ -479,7 +445,7 @@ export default function LoginSection() {
                   className="font-bold text-brand-teal hover:underline cursor-pointer"
                 >
                   {mode === "login"
-                    ? "¿No tienes cuenta? Regístrate"
+                    ? "¿Eres adoptante nuevo? Regístrate"
                     : "¿Ya tienes cuenta? Inicia sesión"}
                 </button>
               </div>
