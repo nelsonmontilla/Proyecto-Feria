@@ -1,0 +1,16 @@
+{
+  "name": "animal-advisor-backend",
+  "version": "1.0.0",
+  "description": "Backend propio REST API para Animal Advisor - Sistema de Gestión y Difusión de Adopción de Perros y Gatos",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^18.0.10",
+    "express": "^4.19.2",
+    "mongoose": "^9.12.2"
+  }
+}

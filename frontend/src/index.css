@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Nunito Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Varela Round', 'Nunito Sans', sans-serif;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Gradiente oficial inspirado en el anillo del logo Animal Advisor */
+.bg-logo-gradient {
+  background: linear-gradient(135deg, #154F6B 0%, #1D6A8B 38%, #44A8C6 72%, #7AD6B7 100%);
+}
+
+.text-logo-gradient {
+  background: linear-gradient(135deg, #154F6B 0%, #1D6A8B 45%, #3799B6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.border-logo-gradient {
+  border-image: linear-gradient(135deg, #154F6B, #44A8C6, #7AD6B7) 1;
+}
