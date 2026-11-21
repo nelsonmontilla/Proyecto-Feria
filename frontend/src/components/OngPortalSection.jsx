@@ -269,7 +269,7 @@ export default function OngPortalSection() {
             <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-brand-navy font-display">
               {isOngRole
                 ? `Mascotas de ${myOngObj?.name || user?.name}`
-                : "Gestión de Mascotas en Adopción (CRUD Entidad #1)"}
+                : "Gestión de Mascotas en Adopción"}
             </h2>
             <p className="mt-1.5 text-slate-600 text-base max-w-2xl">
               {isOngRole
@@ -342,7 +342,7 @@ export default function OngPortalSection() {
                   <p className="text-xs text-brand-slate">
                     {isOngRole
                       ? `Registro exclusivo para ${myOngObj?.name || user?.name}`
-                      : "Formulario conectado al Backend y Redux"}
+                      : "Completa los datos de la mascota para registrarla o actualizar su ficha"}
                   </p>
                 </div>
               </div>

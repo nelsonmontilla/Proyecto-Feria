@@ -147,7 +147,7 @@ export default function CatalogSection() {
         <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-soft border border-brand-cyan/25 mb-10">
           <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-brand-teal mb-4">
             <SlidersHorizontal className="w-4 h-4" />
-            <span>Filtros Multicriterio (Custom Hook: usePetFilters + useDebounce)</span>
+            <span>Filtros Multicriterio</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">

@@ -76,7 +76,7 @@ export default function ProblemImpactSection() {
             <div>
               <div className="flex items-center gap-2 text-brand-mint text-xs font-extrabold uppercase tracking-wider">
                 <TrendingUp className="w-4 h-4" />
-                <span>Monitor de Ocupación en Tiempo Real (Estado Redux)</span>
+                <span>Monitor de Ocupación en Tiempo Real</span>
               </div>
               <h3 className="text-2xl font-extrabold font-display mt-1">
                 Nivel de Saturación por ONG Aliada

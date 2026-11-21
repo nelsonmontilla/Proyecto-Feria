@@ -435,7 +435,7 @@ export default function LoginSection() {
               <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-brand-teal" />
-                  Sesión gestionada en Redux (`authSlice`)
+                  Sesión segura para tu cuenta
                 </span>
                 <button
                   type="button"
