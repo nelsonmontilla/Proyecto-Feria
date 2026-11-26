@@ -1,7 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 const initialData = require("./seedData");
+
+const BCRYPT_REGEX = /^\$2[aby]\$\d{2}\$/;
 const {
   UserModel,
   OngModel,
@@ -99,12 +102,18 @@ function readDb() {
     const raw = fs.readFileSync(DB_FILE, "utf-8");
     const parsed = JSON.parse(raw);
 
-    // Ensure all initial seed users exist (including multiple ONG accounts)
+    // Ensure all initial seed users exist and migrate any legacy plaintext passwords to bcrypt
     if (!parsed.users) parsed.users = [];
     let updatedUsers = false;
     for (const seedUser of initialData.users) {
       if (!parsed.users.some((u) => u.email === seedUser.email)) {
         parsed.users.push(seedUser);
+        updatedUsers = true;
+      }
+    }
+    for (const user of parsed.users) {
+      if (user.password && !BCRYPT_REGEX.test(user.password)) {
+        user.password = bcrypt.hashSync(user.password, 10);
         updatedUsers = true;
       }
     }

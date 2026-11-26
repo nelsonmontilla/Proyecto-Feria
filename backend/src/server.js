@@ -1,6 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const {
   readDb,
   writeDb,
@@ -11,6 +13,23 @@ const {
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const JWT_SECRET =
+  process.env.JWT_SECRET || "animal_advisor_super_secret_jwt_key_2026";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
+const BCRYPT_SALT_ROUNDS = 10;
+
+function signAuthToken(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      ongId: user.ongId || null
+    },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+}
 
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
@@ -19,7 +38,7 @@ app.use(express.json({ limit: "5mb" }));
 connectMongoAtlas();
 
 // ===========================================================
-// MIDDLEWARE DE PROTECCIÓN DE RUTAS Y ROLES EN EL BACKEND
+// MIDDLEWARE DE PROTECCIÓN DE RUTAS Y ROLES EN EL BACKEND (JWT)
 // ===========================================================
 function requireRole(allowedRoles = ["admin"]) {
   return (req, res, next) => {
@@ -32,7 +51,7 @@ function requireRole(allowedRoles = ["admin"]) {
 
     try {
       const token = authHeader.split(" ")[1];
-      const decoded = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
+      const decoded = jwt.verify(token, JWT_SECRET);
 
       if (!decoded || !decoded.role || !allowedRoles.includes(decoded.role)) {
         return res.status(403).json({
@@ -44,9 +63,12 @@ function requireRole(allowedRoles = ["admin"]) {
 
       req.user = decoded;
       next();
-    } catch {
+    } catch (err) {
+      const expired = err && err.name === "TokenExpiredError";
       return res.status(401).json({
-        message: "Token de sesión inválido o expirado. Inicia sesión nuevamente."
+        message: expired
+          ? "Tu sesión ha expirado. Por favor, inicia sesión nuevamente."
+          : "Token JWT inválido o no reconocido. Inicia sesión nuevamente."
       });
     }
   };
@@ -88,9 +110,9 @@ app.post("/api/db-connect", requireRole(["admin"]), async (req, res) => {
 });
 
 // ===========================================================
-// AUTENTICACIÓN Y SEPARACIÓN DE ROLES (LOGIN / REGISTRO PÚBLICO)
+// AUTENTICACIÓN Y SEPARACIÓN DE ROLES (LOGIN / REGISTRO CON BCRYPT + JWT)
 // ===========================================================
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
   const db = readDb();
   const { email, password } = req.body;
 
@@ -102,10 +124,17 @@ app.post("/api/auth/login", (req, res) => {
 
   const normalizedEmail = email.trim().toLowerCase();
   const user = (db.users || []).find(
-    (u) => u.email.toLowerCase() === normalizedEmail && u.password === password
+    (u) => u.email.toLowerCase() === normalizedEmail
   );
 
   if (!user) {
+    return res
+      .status(401)
+      .json({ message: "Credenciales inválidas. Verifica tu correo o contraseña." });
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
     return res
       .status(401)
       .json({ message: "Credenciales inválidas. Verifica tu correo o contraseña." });
@@ -120,14 +149,7 @@ app.post("/api/auth/login", (req, res) => {
     title: user.title || (user.role === "admin" ? "Administrador" : "Adoptante")
   };
 
-  const token = Buffer.from(
-    JSON.stringify({
-      id: safeUser.id,
-      role: safeUser.role,
-      ongId: safeUser.ongId,
-      iat: Date.now()
-    })
-  ).toString("base64");
+  const token = signAuthToken(safeUser);
 
   res.json({
     user: safeUser,
@@ -138,7 +160,7 @@ app.post("/api/auth/login", (req, res) => {
 
 // El registro público SOLO permite registrar Usuarios Normales (Adoptantes).
 // Las nuevas ONGs solo pueden ser registradas por el Administrador en POST /api/ongs.
-app.post("/api/auth/register", (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
   const db = readDb();
   const { name, email, password } = req.body;
 
@@ -159,11 +181,13 @@ app.post("/api/auth/register", (req, res) => {
       .json({ message: "Este correo electrónico ya se encuentra registrado" });
   }
 
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+
   const newUser = {
     id: `usr-${Date.now()}`,
     name: name.trim(),
     email: normalizedEmail,
-    password,
+    password: hashedPassword,
     role: "user", // Siempre 'user' en el registro público
     ongId: null,
     title: "Usuario Adoptante"
@@ -182,14 +206,7 @@ app.post("/api/auth/register", (req, res) => {
     title: newUser.title
   };
 
-  const token = Buffer.from(
-    JSON.stringify({
-      id: safeUser.id,
-      role: safeUser.role,
-      ongId: null,
-      iat: Date.now()
-    })
-  ).toString("base64");
+  const token = signAuthToken(safeUser);
 
   res.status(201).json({
     user: safeUser,
@@ -416,7 +433,7 @@ app.get("/api/ongs/:id", (req, res) => {
   res.json(ong);
 });
 
-app.post("/api/ongs", requireRole(["admin"]), (req, res) => {
+app.post("/api/ongs", requireRole(["admin"]), async (req, res) => {
   const db = readDb();
   const {
     name,
@@ -465,16 +482,20 @@ app.post("/api/ongs", requireRole(["admin"]), (req, res) => {
 
   db.ongs.unshift(newOng);
 
-  // Crear también la cuenta de usuario de acceso para esta ONG registrada por el Admin
+  // Crear también la cuenta de usuario de acceso con contraseña cifrada (bcrypt)
   if (!db.users) db.users = [];
   const existingUserIdx = db.users.findIndex(
     (u) => u.email.toLowerCase() === normalizedEmail
   );
+  const rawOngPassword =
+    password && password.trim() ? password.trim() : "ong123";
+  const hashedOngPassword = await bcrypt.hash(rawOngPassword, BCRYPT_SALT_ROUNDS);
+
   const ongAccount = {
     id: `usr-${newOngId}`,
     name: newOng.name,
     email: normalizedEmail,
-    password: password && password.trim() ? password.trim() : "ong123",
+    password: hashedOngPassword,
     role: "ong",
     ongId: newOngId,
     title: `ONG Verificada (${newOng.city})`
@@ -490,7 +511,7 @@ app.post("/api/ongs", requireRole(["admin"]), (req, res) => {
   res.status(201).json(newOng);
 });
 
-app.put("/api/ongs/:id", requireRole(["admin"]), (req, res) => {
+app.put("/api/ongs/:id", requireRole(["admin"]), async (req, res) => {
   const db = readDb();
   const index = db.ongs.findIndex((o) => o.id === req.params.id);
   if (index === -1) {
@@ -511,14 +532,17 @@ app.put("/api/ongs/:id", requireRole(["admin"]), (req, res) => {
 
   db.ongs[index] = updatedOng;
 
-  // Sincronizar también la cuenta de usuario asociada a esta ONG
+  // Sincronizar también la cuenta de usuario asociada a esta ONG (con hash bcrypt si cambia clave)
   if (db.users) {
     const userIdx = db.users.findIndex((u) => u.ongId === updatedOng.id);
     if (userIdx !== -1) {
       db.users[userIdx].name = updatedOng.name;
       db.users[userIdx].email = updatedOng.email.toLowerCase();
       if (password && password.trim()) {
-        db.users[userIdx].password = password.trim();
+        db.users[userIdx].password = await bcrypt.hash(
+          password.trim(),
+          BCRYPT_SALT_ROUNDS
+        );
       }
     }
   }

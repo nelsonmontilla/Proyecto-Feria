@@ -75,11 +75,15 @@ export const fetchDbStatus = createAsyncThunk(
 
 export const connectMongoAtlasUri = createAsyncThunk(
   "auth/connectMongoAtlas",
-  async (mongoUri, { rejectWithValue }) => {
+  async (mongoUri, { getState, rejectWithValue }) => {
     try {
+      const token = getState()?.auth?.token;
       const res = await fetch("/api/db-connect", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ mongoUri })
       });
       const data = await res.json();

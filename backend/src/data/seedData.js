@@ -1,10 +1,14 @@
+const bcrypt = require("bcryptjs");
+
+const SALT_ROUNDS = 10;
+
 const initialData = {
   users: [
     {
       id: "usr-admin-1",
       name: "Administrador General",
       email: "admin@animaladvisor.org",
-      password: "admin123",
+      password: bcrypt.hashSync("admin123", SALT_ROUNDS),
       role: "admin",
       ongId: null,
       title: "Supervisor Nacional Animal Advisor"
@@ -13,7 +17,7 @@ const initialData = {
       id: "usr-ong-1",
       name: "Fundación Huellas de Esperanza",
       email: "ong@huellasesperanza.org",
-      password: "ong123",
+      password: bcrypt.hashSync("ong123", SALT_ROUNDS),
       role: "ong",
       ongId: "ong-1",
       title: "ONG Verificada (Caracas)"
@@ -22,7 +26,7 @@ const initialData = {
       id: "usr-ong-2",
       name: "Refugio Patitas Unidas",
       email: "ong@patitasunidas.org",
-      password: "ong123",
+      password: bcrypt.hashSync("ong123", SALT_ROUNDS),
       role: "ong",
       ongId: "ong-2",
       title: "ONG Verificada (Valencia)"
@@ -31,7 +35,7 @@ const initialData = {
       id: "usr-ong-3",
       name: "Santuario Bigotes y Colitas",
       email: "ong@bigotesycolitas.org",
-      password: "ong123",
+      password: bcrypt.hashSync("ong123", SALT_ROUNDS),
       role: "ong",
       ongId: "ong-3",
       title: "ONG Verificada (Barquisimeto)"
@@ -40,7 +44,7 @@ const initialData = {
       id: "usr-user-1",
       name: "Andrea Rodríguez",
       email: "usuario@correo.com",
-      password: "user123",
+      password: bcrypt.hashSync("user123", SALT_ROUNDS),
       role: "user",
       ongId: null,
       title: "Adoptante Registrada"

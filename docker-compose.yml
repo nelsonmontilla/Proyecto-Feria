@@ -11,6 +11,8 @@ services:
       - "4000:4000"
     environment:
       - PORT=4000
+      - JWT_SECRET=animal_advisor_super_secret_jwt_key_2026
+      - JWT_EXPIRES_IN=24h
     volumes:
       - ./backend/src/data:/app/src/data
 
